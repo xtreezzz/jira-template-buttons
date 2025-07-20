@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Jira Template Buttons",
+  "version": "2.1.6",
+  "description": "Adds two buttons (Add template, Save template) to Jira description and comment fields.",
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.atlassian.net/*",
+        "https://*.jira.com/*",
+        "http://localhost/*"
+      ],
+      "js": ["src/content.js"],
+      "css": ["src/styles.css"]
+    }
+  ],
+  "host_permissions": [
+    "https://*.atlassian.net/*",
+    "https://*.jira.com/*",
+    "http://localhost/*"
+  ]
+}
