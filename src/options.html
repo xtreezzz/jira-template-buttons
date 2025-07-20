@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Jira Template Buttons — Настройки</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h2>Настройки LLM</h2>
+  <form id="settings-form">
+    <label>
+      API URL:
+      <input type="text" id="apiUrl" list="apiUrlList" required>
+      <datalist id="apiUrlList">
+        <option value="https://api.openai.com/v1">
+        <option value="https://generativelanguage.googleapis.com/v1beta">
+      </datalist>
+    </label>
+    <label>
+      API ключ:
+      <input type="password" id="apiKey" required>
+    </label>
+    <label>
+      Модель:
+      <select id="model">
+        <optgroup label="OpenAI">
+          <option value="gpt-4o">gpt-4o</option>
+        </optgroup>
+        <optgroup label="Gemini">
+          <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+          <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+          <option value="gemini-pro">gemini-pro</option>
+        </optgroup>
+      </select>
+    </label>
+    <label>
+      Системный промпт:
+      <textarea id="systemPrompt" rows="4"></textarea>
+    </label>
+    <button type="submit">Сохранить</button>
+    <span id="status"></span>
+  </form>
+  <script src="options.js"></script>
+</body>
+</html> 

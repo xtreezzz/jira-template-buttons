@@ -1,11 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Jira Template Buttons",
-  "version": "2.1.6",
-  "description": "Adds two buttons (Add template, Save template) to Jira description and comment fields.",
+  "version": "2.2.2",
+  "description": "Adds LLM-powered buttons to Jira/Confluence for smarter ticket creation.",
   "icons": {
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "options_page": "src/options.html",
+  "background": {
+    "service_worker": "src/background.js"
   },
   "content_scripts": [
     {
@@ -18,9 +22,11 @@
       "css": ["src/styles.css"]
     }
   ],
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
   "host_permissions": [
-    "https://*.atlassian.net/*",
-    "https://*.jira.com/*",
-    "http://localhost/*"
+    "<all_urls>"
   ]
 }

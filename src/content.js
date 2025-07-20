@@ -94,41 +94,157 @@
         setTemplate(value);
     }
 
+    // --- LLM & History logic ---
+
+    async function loadSettings() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['apiUrl', 'apiKey', 'model', 'systemPrompt'], (data) => {
+                resolve({
+                    apiUrl: data.apiUrl || '',
+                    apiKey: data.apiKey || '',
+                    model: data.model || 'gpt-3.5-turbo',
+                    systemPrompt: data.systemPrompt || ''
+                });
+            });
+        });
+    }
+
+    function showPromptModal(currentPrompt, onSave) {
+        // Простое модальное окно для редактирования промпта
+        const modal = document.createElement('div');
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0,0,0,0.3)';
+        modal.style.zIndex = '9999';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+
+        const box = document.createElement('div');
+        box.style.background = '#fff';
+        box.style.padding = '24px';
+        box.style.borderRadius = '8px';
+        box.style.minWidth = '320px';
+        box.innerHTML = `<h3>Системный промпт</h3><textarea style="width:100%;height:100px;">${currentPrompt || ''}</textarea><br><button>Сохранить</button> <button type="button">Отмена</button>`;
+        const textarea = box.querySelector('textarea');
+        const saveBtn = box.querySelector('button');
+        const cancelBtn = box.querySelectorAll('button')[1];
+        saveBtn.onclick = () => {
+            onSave(textarea.value);
+            document.body.removeChild(modal);
+        };
+        cancelBtn.onclick = () => document.body.removeChild(modal);
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+    }
+
+    async function callLLM(prompt, text, textarea) {
+        // Показать спиннер
+        let spinner = document.createElement('span');
+        spinner.textContent = '⏳';
+        spinner.style.marginLeft = '8px';
+        textarea.parentNode.insertBefore(spinner, textarea);
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ type: 'llm', prompt, text }, (response) => {
+                spinner.remove();
+                if (response && response.success) {
+                    resolve(response.data);
+                } else {
+                    alert('Ошибка LLM: ' + (response && response.error ? response.error : 'Unknown error'));
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    // --- История версий ---
+    let history = [];
+    let historyIndex = -1;
+
+    function saveVersion(text) {
+        history = history.slice(0, historyIndex + 1);
+        history.push(text);
+        historyIndex = history.length - 1;
+        chrome.storage.local.set({ 'jira-helper-history': history, 'jira-helper-history-index': historyIndex });
+    }
+
+    function goBack(setDescription) {
+        if (historyIndex > 0) {
+            historyIndex--;
+            setDescription(history[historyIndex]);
+            chrome.storage.local.set({ 'jira-helper-history-index': historyIndex });
+        }
+    }
+
+    function goForward(setDescription) {
+        if (historyIndex < history.length - 1) {
+            historyIndex++;
+            setDescription(history[historyIndex]);
+            chrome.storage.local.set({ 'jira-helper-history-index': historyIndex });
+        }
+    }
+
+    // --- Кнопки ---
+    function createButton(text, onClick) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = text;
+        btn.style.marginRight = '8px';
+        btn.onclick = onClick;
+        return btn;
+    }
+
+    function addLLMButtonsToDescription(textarea, group) {
+        if (group.querySelector('.jira-llm-buttons-panel')) return;
+        const panel = document.createElement('div');
+        panel.className = 'jira-llm-buttons-panel';
+        panel.style.margin = '4px 0';
+
+        // Кнопки
+        const promptBtn = createButton('🔁 Уточнить системный промпт', async () => {
+            const settings = await loadSettings();
+            showPromptModal(settings.systemPrompt, (newPrompt) => {
+                chrome.storage.local.set({ systemPrompt: newPrompt });
+            });
+        });
+        const improveBtn = createButton('⚙️ Улучшить постановку', async () => {
+            const settings = await loadSettings();
+            const text = textarea.value;
+            const prompt = settings.systemPrompt || '';
+            const result = await callLLM(prompt, text, textarea);
+            if (result && result.output) {
+                const newText = `Вход:\n${text}\n\nВыход:\n${result.output}`;
+                textarea.value = newText;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                saveVersion(newText);
+            }
+        });
+        const backBtn = createButton('⬅️ Назад', () => {
+            goBack((ver) => {
+                textarea.value = ver;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+        const forwardBtn = createButton('➡️ Вперед', () => {
+            goForward((ver) => {
+                textarea.value = ver;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+
+        panel.append(promptBtn, improveBtn, backBtn, forwardBtn);
+        textarea.parentNode.insertBefore(panel, textarea);
+    }
+
+    // --- Встраивание в существующую механику ---
     function addButtonsToDescription() {
         const found = findDescriptionFieldGroup();
         if (!found) return;
         const { group, textarea } = found;
-        if (group.querySelector('.' + BUTTONS_CLASS)) return;
-
-        const panel = document.createElement('div');
-        panel.className = BUTTONS_CLASS;
-        panel.style.margin = '4px 0';
-
-        const addBtn = document.createElement('button');
-        addBtn.id = ADD_BTN_ID;
-        addBtn.type = 'button';
-        addBtn.textContent = 'Add template';
-        addBtn.style.marginRight = '8px';
-        addBtn.onclick = (e) => {
-            e.preventDefault();
-            insertTemplateUniversal(textarea);
-        };
-
-        const saveBtn = document.createElement('button');
-        saveBtn.id = SAVE_BTN_ID;
-        saveBtn.type = 'button';
-        saveBtn.textContent = 'Save template';
-        saveBtn.onclick = (e) => {
-            e.preventDefault();
-            saveTemplateUniversal(textarea);
-        };
-
-        panel.appendChild(addBtn);
-        panel.appendChild(saveBtn);
-
-        // Вставляем панель перед textarea
-        textarea.parentNode.insertBefore(panel, textarea);
-        log('Buttons added to description field-group');
+        addLLMButtonsToDescription(textarea, group);
     }
 
     function init() {
