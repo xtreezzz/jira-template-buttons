@@ -143,7 +143,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('[LLM] Body:', { ...body, key: body.key ? '[MASKED]' : body.key });
         }
 
-        if (provider === 'custom' && settings.customEndpointFormat === 'token-auth') {
+        if (settings.customEndpointFormat === 'token-auth') {
           console.log('[DEBUG] Custom API Debug Info:');
           console.log('[DEBUG] Auth URL:', settings.authUrl);
           console.log('[DEBUG] Chat URL:', settings.chatUrl);
@@ -223,7 +223,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         console.log('[DEBUG] Final extracted output:', output ? `"${output.substring(0, 100)}${output.length > 100 ? '...' : ''}"` : '[EMPTY]');
 
-        if (provider === 'custom' && settings.customEndpointFormat === 'token-auth') {
+        if (settings.customEndpointFormat === 'token-auth') {
           const debugInfo = {
             authUrl: settings.authUrl,
             chatUrl: settings.chatUrl,
@@ -238,7 +238,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       } catch (e) {
         console.error('[LLM] Error:', e);
-        if (provider === 'custom' && settings.customEndpointFormat === 'token-auth') {
+        if (settings.customEndpointFormat === 'token-auth') {
           const debugInfo = {
             authUrl: settings.authUrl,
             chatUrl: settings.chatUrl,
@@ -255,4 +255,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true; // async response
   }
-});                 
+});                   
