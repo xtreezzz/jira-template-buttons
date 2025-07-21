@@ -88,3 +88,26 @@
 #status {
   font-weight: 500;
 }
+
+/* Token authentication fields */
+#tokenAuthFields {
+  background: #e8f4f8;
+  padding: 15px;
+  border-radius: 6px;
+  margin: 15px 0;
+  border-left: 4px solid #0052cc;
+}
+
+#tokenAuthFields h3 {
+  margin-top: 0;
+  color: #0052cc;
+  font-size: 16px;
+}
+
+#tokenAuthFields label {
+  margin-bottom: 10px;
+}
+
+#tokenAuthFields input {
+  background: white;
+}

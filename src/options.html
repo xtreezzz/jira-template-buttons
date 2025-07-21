@@ -51,8 +51,42 @@
         <option value="openai">OpenAI-совместимый</option>
         <option value="ollama">Ollama</option>
         <option value="custom">Кастомный</option>
+        <option value="token-auth">Кастомный с токен-аутентификацией</option>
       </select>
     </label>
+    
+    <!-- Поля для токен-аутентификации -->
+    <div id="tokenAuthFields" style="display: none;">
+      <h3>Настройки токен-аутентификации</h3>
+      <label>
+        URL для получения токена:
+        <input type="text" id="authUrl" placeholder="https://url/auth/v1/token">
+      </label>
+      <label>
+        URL для чата:
+        <input type="text" id="chatUrl" placeholder="https://url/public/v1/chat/completions">
+      </label>
+      <label>
+        Имя пользователя:
+        <input type="text" id="username" placeholder="username">
+      </label>
+      <label>
+        Пароль:
+        <input type="password" id="password" placeholder="password">
+      </label>
+      <label>
+        Температура (0.0 - 2.0):
+        <input type="number" id="temperature" min="0" max="2" step="0.1" value="0.1">
+      </label>
+      <label>
+        Роль системы:
+        <input type="text" id="systemRole" value="system" placeholder="system">
+      </label>
+      <label>
+        Роль пользователя:
+        <input type="text" id="userRole" value="user" placeholder="user">
+      </label>
+    </div>
     <label>
       Системный промпт:
       <textarea id="systemPrompt" rows="4"></textarea>
@@ -62,4 +96,4 @@
   </form>
   <script src="options.js"></script>
 </body>
-</html>  
+</html>    
