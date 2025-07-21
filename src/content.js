@@ -185,10 +185,28 @@
                     }
                     
                     if (response && response.success) {
+                        if (response.debugInfo) {
+                            console.log('[DEBUG] Custom API Request Success:');
+                            console.log('[DEBUG] Auth URL:', response.debugInfo.authUrl);
+                            console.log('[DEBUG] Chat URL:', response.debugInfo.chatUrl);
+                            console.log('[DEBUG] Model:', response.debugInfo.model);
+                            console.log('[DEBUG] Response Status:', response.debugInfo.responseStatus);
+                            console.log('[DEBUG] Timestamp:', response.debugInfo.timestamp);
+                        }
                         resolve(response.data);
                     } else {
                         const errorMsg = response?.error || 'Неизвестная ошибка';
                         console.error('[JiraTemplateButtons] LLM error:', errorMsg);
+                        
+                        if (response?.debugInfo) {
+                            console.error('[DEBUG] Custom API Request Failed:');
+                            console.error('[DEBUG] Auth URL:', response.debugInfo.authUrl);
+                            console.error('[DEBUG] Chat URL:', response.debugInfo.chatUrl);
+                            console.error('[DEBUG] Model:', response.debugInfo.model);
+                            console.error('[DEBUG] Error:', response.debugInfo.error);
+                            console.error('[DEBUG] Timestamp:', response.debugInfo.timestamp);
+                        }
+                        
                         alert('Ошибка LLM: ' + errorMsg);
                         resolve(null);
                     }

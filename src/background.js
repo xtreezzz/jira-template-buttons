@@ -223,13 +223,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         console.log('[DEBUG] Final extracted output:', output ? `"${output.substring(0, 100)}${output.length > 100 ? '...' : ''}"` : '[EMPTY]');
 
-        sendResponse({ success: true, data: { output, raw: data } });
+        if (provider === 'custom' && settings.customEndpointFormat === 'token-auth') {
+          const debugInfo = {
+            authUrl: settings.authUrl,
+            chatUrl: settings.chatUrl,
+            model: settings.model,
+            requestSuccess: true,
+            responseStatus: response.status,
+            timestamp: new Date().toISOString()
+          };
+          sendResponse({ success: true, data: { output, raw: data }, debugInfo });
+        } else {
+          sendResponse({ success: true, data: { output, raw: data } });
+        }
       } catch (e) {
         console.error('[LLM] Error:', e);
-        sendResponse({ success: false, error: e.message });
+        if (provider === 'custom' && settings.customEndpointFormat === 'token-auth') {
+          const debugInfo = {
+            authUrl: settings.authUrl,
+            chatUrl: settings.chatUrl,
+            model: settings.model,
+            error: e.message,
+            timestamp: new Date().toISOString()
+          };
+          sendResponse({ success: false, error: e.message, debugInfo });
+        } else {
+          sendResponse({ success: false, error: e.message });
+        }
       }
       });
     });
     return true; // async response
   }
-});             
+});                 
