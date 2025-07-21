@@ -89,25 +89,89 @@
   font-weight: 500;
 }
 
-/* Token authentication fields */
-#tokenAuthFields {
-  background: #e8f4f8;
+/* Settings steps styling */
+.settings-step {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #dfe1e6;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.settings-step h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #0052cc;
+  font-size: 18px;
+  border-bottom: 2px solid #0052cc;
+  padding-bottom: 8px;
+}
+
+/* Provider selection styling */
+.settings-step label {
+  display: block;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid #dfe1e6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.settings-step label:hover {
+  background-color: #e4e6ea;
+}
+
+.settings-step input[type="radio"] {
+  margin-right: 10px;
+}
+
+.settings-step input[type="radio"]:checked + label,
+.settings-step label:has(input[type="radio"]:checked) {
+  background-color: #e8f4f8;
+  border-color: #0052cc;
+}
+
+/* Model and settings sections */
+#openaiModels, #geminiModels, #customModel,
+#openaiSettings, #geminiSettings, #customSettings {
+  background: white;
   padding: 15px;
   border-radius: 6px;
-  margin: 15px 0;
+  margin: 10px 0;
+  border: 1px solid #dfe1e6;
+}
+
+/* Custom API settings styling */
+#customSettings {
+  background: #e8f4f8;
   border-left: 4px solid #0052cc;
 }
 
-#tokenAuthFields h3 {
-  margin-top: 0;
-  color: #0052cc;
-  font-size: 16px;
-}
-
-#tokenAuthFields label {
+#customSettings label {
   margin-bottom: 10px;
+  padding: 5px 0;
+  border: none;
+  background: transparent;
 }
 
-#tokenAuthFields input {
+#customSettings input {
   background: white;
+}
+
+/* Small text styling */
+small {
+  display: block;
+  color: #6b778c;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Save section styling */
+#saveSection {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f4f5f7;
+  border-radius: 8px;
+  text-align: center;
 }
