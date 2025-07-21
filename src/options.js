@@ -117,6 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Загрузка настроек с использованием sync storage для персистентности
   const loadSettings = () => {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      console.warn('[SETTINGS] Chrome storage APIs not available, using default values');
+      return;
+    }
+    
     chrome.storage.sync.get([
       'provider', 'apiUrl', 'model', 'systemPrompt',
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
@@ -169,6 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const migrateSettings = () => {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      console.warn('[MIGRATION] Chrome storage APIs not available, skipping migration');
+      loadSettings();
+      return;
+    }
+    
     chrome.storage.local.get([
       'provider', 'apiUrl', 'model', 'systemPrompt',
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
@@ -284,6 +295,11 @@ document.addEventListener('DOMContentLoaded', () => {
       localData.password = settingsData.password;
     }
 
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      showError('Chrome storage APIs недоступны. Убедитесь, что страница открыта через расширение.');
+      return;
+    }
+    
     chrome.storage.sync.set(syncData, () => {
       chrome.storage.local.set(localData, () => {
         showSuccess('Настройки сохранены и будут сохранены при обновлениях!');
@@ -308,4 +324,4 @@ document.addEventListener('DOMContentLoaded', () => {
       status.style.color = '';
     }, 1500);
   }
-});                            
+});                                                        
