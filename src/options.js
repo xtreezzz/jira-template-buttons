@@ -1,13 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('settings-form');
-  const apiUrl = document.getElementById('apiUrl');
-  const apiKey = document.getElementById('apiKey');
-  const model = document.getElementById('model');
-  const systemPrompt = document.getElementById('systemPrompt');
   const status = document.getElementById('status');
-
-  const customEndpointFormat = document.getElementById('customEndpointFormat');
-  const tokenAuthFields = document.getElementById('tokenAuthFields');
+  
+  const modelStep = document.getElementById('modelStep');
+  const providerSettings = document.getElementById('providerSettings');
+  const promptStep = document.getElementById('promptStep');
+  const saveSection = document.getElementById('saveSection');
+  
+  const providerRadios = document.querySelectorAll('input[name="provider"]');
+  const providerOpenAI = document.getElementById('providerOpenAI');
+  const providerGemini = document.getElementById('providerGemini');
+  const providerCustom = document.getElementById('providerCustom');
+  
+  const openaiModels = document.getElementById('openaiModels');
+  const geminiModels = document.getElementById('geminiModels');
+  const customModel = document.getElementById('customModel');
+  const openaiModel = document.getElementById('openaiModel');
+  const geminiModel = document.getElementById('geminiModel');
+  const customModelName = document.getElementById('customModelName');
+  
+  const openaiSettings = document.getElementById('openaiSettings');
+  const geminiSettings = document.getElementById('geminiSettings');
+  const customSettings = document.getElementById('customSettings');
+  
+  const openaiUrl = document.getElementById('openaiUrl');
+  const openaiKey = document.getElementById('openaiKey');
+  const geminiUrl = document.getElementById('geminiUrl');
+  const geminiKey = document.getElementById('geminiKey');
   const authUrl = document.getElementById('authUrl');
   const chatUrl = document.getElementById('chatUrl');
   const username = document.getElementById('username');
@@ -15,27 +34,125 @@ document.addEventListener('DOMContentLoaded', () => {
   const temperature = document.getElementById('temperature');
   const systemRole = document.getElementById('systemRole');
   const userRole = document.getElementById('userRole');
+  const systemPrompt = document.getElementById('systemPrompt');
 
-  function toggleTokenAuthFields() {
-    if (customEndpointFormat.value === 'token-auth') {
-      tokenAuthFields.style.display = 'block';
-    } else {
-      tokenAuthFields.style.display = 'none';
+  let currentProvider = '';
+  let currentModel = '';
+
+  providerRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      currentProvider = e.target.value;
+      showModelStep();
+      hideStepsAfter('model');
+    });
+  });
+
+  openaiModel.addEventListener('change', (e) => {
+    if (e.target.value) {
+      currentModel = e.target.value;
+      showProviderSettings();
+    }
+  });
+
+  geminiModel.addEventListener('change', (e) => {
+    if (e.target.value) {
+      currentModel = e.target.value;
+      showProviderSettings();
+    }
+  });
+
+  customModelName.addEventListener('input', (e) => {
+    if (e.target.value.trim()) {
+      currentModel = e.target.value.trim();
+      showProviderSettings();
+    }
+  });
+
+  function showModelStep() {
+    openaiModels.style.display = 'none';
+    geminiModels.style.display = 'none';
+    customModel.style.display = 'none';
+    
+    if (currentProvider === 'openai') {
+      openaiModels.style.display = 'block';
+    } else if (currentProvider === 'gemini') {
+      geminiModels.style.display = 'block';
+    } else if (currentProvider === 'custom') {
+      customModel.style.display = 'block';
+    }
+    
+    modelStep.style.display = 'block';
+  }
+
+  function showProviderSettings() {
+    openaiSettings.style.display = 'none';
+    geminiSettings.style.display = 'none';
+    customSettings.style.display = 'none';
+    
+    if (currentProvider === 'openai') {
+      openaiSettings.style.display = 'block';
+    } else if (currentProvider === 'gemini') {
+      geminiSettings.style.display = 'block';
+    } else if (currentProvider === 'custom') {
+      customSettings.style.display = 'block';
+    }
+    
+    providerSettings.style.display = 'block';
+    promptStep.style.display = 'block';
+    saveSection.style.display = 'block';
+  }
+
+  function hideStepsAfter(step) {
+    if (step === 'provider') {
+      modelStep.style.display = 'none';
+      providerSettings.style.display = 'none';
+      promptStep.style.display = 'none';
+      saveSection.style.display = 'none';
+    } else if (step === 'model') {
+      providerSettings.style.display = 'none';
+      promptStep.style.display = 'none';
+      saveSection.style.display = 'none';
     }
   }
 
-  customEndpointFormat.addEventListener('change', toggleTokenAuthFields);
-
   // Загрузка настроек
   chrome.storage.local.get([
-    'apiUrl', 'apiKey', 'model', 'systemPrompt', 'customEndpointFormat',
+    'provider', 'apiUrl', 'apiKey', 'model', 'systemPrompt',
     'authUrl', 'chatUrl', 'username', 'password', 'temperature', 'systemRole', 'userRole'
   ], (data) => {
-    apiUrl.value = data.apiUrl || '';
-    apiKey.value = data.apiKey || '';
-    model.value = data.model || 'gpt-3.5-turbo';
-    systemPrompt.value = data.systemPrompt || '';
-    customEndpointFormat.value = data.customEndpointFormat || 'openai';
+    let savedProvider = data.provider;
+    if (!savedProvider) {
+      if (data.model && data.model.startsWith('gpt-')) {
+        savedProvider = 'openai';
+      } else if (data.model && data.model.startsWith('gemini-')) {
+        savedProvider = 'gemini';
+      } else if (data.authUrl || data.chatUrl) {
+        savedProvider = 'custom';
+      } else {
+        savedProvider = 'openai'; // по умолчанию
+      }
+    }
+
+    currentProvider = savedProvider;
+    document.querySelector(`input[name="provider"][value="${savedProvider}"]`).checked = true;
+    showModelStep();
+
+    if (data.model) {
+      currentModel = data.model;
+      if (savedProvider === 'openai') {
+        openaiModel.value = data.model;
+      } else if (savedProvider === 'gemini') {
+        geminiModel.value = data.model;
+      } else if (savedProvider === 'custom') {
+        customModelName.value = data.model;
+      }
+      showProviderSettings();
+    }
+
+    openaiUrl.value = data.apiUrl || '';
+    openaiKey.value = data.apiKey || '';
+    geminiUrl.value = data.apiUrl || '';
+    geminiKey.value = data.apiKey || '';
     authUrl.value = data.authUrl || '';
     chatUrl.value = data.chatUrl || '';
     username.value = data.username || '';
@@ -43,53 +160,85 @@ document.addEventListener('DOMContentLoaded', () => {
     temperature.value = data.temperature || 0.1;
     systemRole.value = data.systemRole || 'system';
     userRole.value = data.userRole || 'user';
-    toggleTokenAuthFields();
+    systemPrompt.value = data.systemPrompt || '';
   });
 
   // Сохранение настроек
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     
-    if (!apiKey.value.trim()) {
-      status.textContent = 'API ключ обязателен!';
-      status.style.color = 'red';
-      setTimeout(() => {
-        status.textContent = '';
-        status.style.color = '';
-      }, 3000);
+    if (!currentProvider) {
+      showError('Выберите провайдера!');
       return;
     }
     
-    if (!model.value.trim()) {
-      status.textContent = 'Модель обязательна!';
-      status.style.color = 'red';
-      setTimeout(() => {
-        status.textContent = '';
-        status.style.color = '';
-      }, 3000);
+    if (!currentModel) {
+      showError('Выберите модель!');
       return;
     }
 
-    chrome.storage.local.set({
-      apiUrl: apiUrl.value.trim(),
-      apiKey: apiKey.value.trim(),
-      model: model.value.trim(),
-      systemPrompt: systemPrompt.value.trim(),
-      customEndpointFormat: customEndpointFormat.value,
-      authUrl: authUrl.value.trim(),
-      chatUrl: chatUrl.value.trim(),
-      username: username.value.trim(),
-      password: password.value.trim(),
-      temperature: parseFloat(temperature.value) || 0.1,
-      systemRole: systemRole.value.trim() || 'system',
-      userRole: userRole.value.trim() || 'user'
-    }, () => {
-      status.textContent = 'Сохранено!';
-      status.style.color = 'green';
-      setTimeout(() => {
-        status.textContent = '';
-        status.style.color = '';
-      }, 1500);
+    if (currentProvider === 'openai' && !openaiKey.value.trim()) {
+      showError('Введите API ключ OpenAI!');
+      return;
+    }
+    
+    if (currentProvider === 'gemini' && !geminiKey.value.trim()) {
+      showError('Введите API ключ Gemini!');
+      return;
+    }
+    
+    if (currentProvider === 'custom') {
+      if (!authUrl.value.trim() || !chatUrl.value.trim() || !username.value.trim() || !password.value.trim()) {
+        showError('Заполните все поля для кастомного API!');
+        return;
+      }
+    }
+
+    const settingsData = {
+      provider: currentProvider,
+      model: currentModel,
+      systemPrompt: systemPrompt.value.trim()
+    };
+
+    if (currentProvider === 'openai') {
+      settingsData.apiUrl = openaiUrl.value.trim();
+      settingsData.apiKey = openaiKey.value.trim();
+      settingsData.customEndpointFormat = 'openai';
+    } else if (currentProvider === 'gemini') {
+      settingsData.apiUrl = geminiUrl.value.trim();
+      settingsData.apiKey = geminiKey.value.trim();
+      settingsData.customEndpointFormat = 'gemini';
+    } else if (currentProvider === 'custom') {
+      settingsData.authUrl = authUrl.value.trim();
+      settingsData.chatUrl = chatUrl.value.trim();
+      settingsData.username = username.value.trim();
+      settingsData.password = password.value.trim();
+      settingsData.temperature = parseFloat(temperature.value) || 0.1;
+      settingsData.systemRole = systemRole.value.trim() || 'system';
+      settingsData.userRole = userRole.value.trim() || 'user';
+      settingsData.customEndpointFormat = 'token-auth';
+    }
+
+    chrome.storage.local.set(settingsData, () => {
+      showSuccess('Настройки сохранены!');
     });
   });
-});    
+
+  function showError(message) {
+    status.textContent = message;
+    status.style.color = 'red';
+    setTimeout(() => {
+      status.textContent = '';
+      status.style.color = '';
+    }, 3000);
+  }
+
+  function showSuccess(message) {
+    status.textContent = message;
+    status.style.color = 'green';
+    setTimeout(() => {
+      status.textContent = '';
+      status.style.color = '';
+    }, 1500);
+  }
+});       
