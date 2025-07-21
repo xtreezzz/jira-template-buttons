@@ -115,11 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Загрузка настроек
-  chrome.storage.local.get([
-    'provider', 'apiUrl', 'apiKey', 'model', 'systemPrompt',
-    'authUrl', 'chatUrl', 'username', 'password', 'temperature', 'systemRole', 'userRole'
-  ], (data) => {
+  // Загрузка настроек с использованием sync storage для персистентности
+  const loadSettings = () => {
+    chrome.storage.sync.get([
+      'provider', 'apiUrl', 'model', 'systemPrompt',
+      'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
+    ], (syncData) => {
+      chrome.storage.local.get(['apiKey', 'password'], (localData) => {
+        const data = { ...syncData, ...localData };
     let savedProvider = data.provider;
     if (!savedProvider) {
       if (data.model && data.model.startsWith('gpt-')) {
@@ -160,8 +163,45 @@ document.addEventListener('DOMContentLoaded', () => {
     temperature.value = data.temperature || 0.1;
     systemRole.value = data.systemRole || 'system';
     userRole.value = data.userRole || 'user';
-    systemPrompt.value = data.systemPrompt || '';
-  });
+        systemPrompt.value = data.systemPrompt || '';
+      });
+    });
+  };
+
+  const migrateSettings = () => {
+    chrome.storage.local.get([
+      'provider', 'apiUrl', 'model', 'systemPrompt',
+      'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
+    ], (oldData) => {
+      if (Object.keys(oldData).length > 0) {
+        console.log('[MIGRATION] Migrating settings from local to sync storage');
+        
+        const syncData = {};
+        const keysToMigrate = ['provider', 'apiUrl', 'model', 'systemPrompt', 'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'];
+        
+        keysToMigrate.forEach(key => {
+          if (oldData[key] !== undefined) {
+            syncData[key] = oldData[key];
+          }
+        });
+        
+        if (Object.keys(syncData).length > 0) {
+          chrome.storage.sync.set(syncData, () => {
+            console.log('[MIGRATION] Settings migrated successfully');
+            chrome.storage.local.remove(keysToMigrate, () => {
+              loadSettings();
+            });
+          });
+        } else {
+          loadSettings();
+        }
+      } else {
+        loadSettings();
+      }
+    });
+  };
+
+  migrateSettings();
 
   // Сохранение настроек
   form.addEventListener('submit', (e) => {
@@ -219,8 +259,35 @@ document.addEventListener('DOMContentLoaded', () => {
       settingsData.customEndpointFormat = 'token-auth';
     }
 
-    chrome.storage.local.set(settingsData, () => {
-      showSuccess('Настройки сохранены!');
+    const syncData = {
+      provider: settingsData.provider,
+      model: settingsData.model,
+      systemPrompt: settingsData.systemPrompt,
+      customEndpointFormat: settingsData.customEndpointFormat
+    };
+
+    const localData = {};
+
+    if (currentProvider === 'openai') {
+      syncData.apiUrl = settingsData.apiUrl;
+      localData.apiKey = settingsData.apiKey;
+    } else if (currentProvider === 'gemini') {
+      syncData.apiUrl = settingsData.apiUrl;
+      localData.apiKey = settingsData.apiKey;
+    } else if (currentProvider === 'custom') {
+      syncData.authUrl = settingsData.authUrl;
+      syncData.chatUrl = settingsData.chatUrl;
+      syncData.username = settingsData.username;
+      syncData.temperature = settingsData.temperature;
+      syncData.systemRole = settingsData.systemRole;
+      syncData.userRole = settingsData.userRole;
+      localData.password = settingsData.password;
+    }
+
+    chrome.storage.sync.set(syncData, () => {
+      chrome.storage.local.set(localData, () => {
+        showSuccess('Настройки сохранены и будут сохранены при обновлениях!');
+      });
     });
   });
 
@@ -241,4 +308,4 @@ document.addEventListener('DOMContentLoaded', () => {
       status.style.color = '';
     }, 1500);
   }
-});       
+});                            

@@ -1,9 +1,11 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'llm') {
-    chrome.storage.local.get([
-      'apiUrl', 'apiKey', 'model', 'systemPrompt', 'customEndpointFormat',
-      'authUrl', 'chatUrl', 'username', 'password', 'temperature', 'systemRole', 'userRole'
-    ], async (settings) => {
+    chrome.storage.sync.get([
+      'apiUrl', 'model', 'systemPrompt', 'customEndpointFormat',
+      'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
+    ], async (syncData) => {
+      chrome.storage.local.get(['apiKey', 'password'], async (localData) => {
+        const settings = { ...syncData, ...localData };
       try {
         if (settings.customEndpointFormat === 'token-auth') {
           if (!settings.model) {
@@ -226,7 +228,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error('[LLM] Error:', e);
         sendResponse({ success: false, error: e.message });
       }
+      });
     });
     return true; // async response
   }
-});          
+});             
