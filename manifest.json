@@ -27,6 +27,11 @@
     "scripting"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://api.openai.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://*.atlassian.net/*",
+    "https://*.jira.com/*",
+    "http://localhost:*/*",
+    "https://localhost:*/*"
   ]
 }

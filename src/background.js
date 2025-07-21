@@ -1,16 +1,20 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'llm') {
-    chrome.storage.local.get(['apiUrl', 'apiKey', 'model', 'systemPrompt'], async (settings) => {
+    chrome.storage.local.get(['apiUrl', 'apiKey', 'model', 'systemPrompt', 'customEndpointFormat'], async (settings) => {
       try {
+        if (!settings.apiKey || !settings.model) {
+          throw new Error('API ключ и модель должны быть настроены');
+        }
+
         let endpoint = '';
         let headers = { 'Content-Type': 'application/json' };
         let body = {};
-        let isOpenAI = false;
-        let isGemini = false;
-        // Определяем провайдера по модели
-        if (settings.model === 'gpt-4o') {
-          isOpenAI = true;
-          endpoint = 'https://api.openai.com/v1/chat/completions';
+        let provider = 'custom';
+
+        // Определяем провайдера и формат запроса
+        if (settings.model === 'gpt-4o' || settings.model.startsWith('gpt-')) {
+          provider = 'openai';
+          endpoint = settings.apiUrl || 'https://api.openai.com/v1/chat/completions';
           headers['Authorization'] = `Bearer ${settings.apiKey}`;
           body = {
             model: settings.model,
@@ -19,18 +23,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               { role: 'user', content: message.text || '' }
             ]
           };
-        } else if (settings.model === 'gemini-2.0-flash') {
-          isGemini = true;
-          endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${settings.apiKey}`;
-          const promptText = (message.prompt ? message.prompt + '\n' : '') + (message.text || '');
-          body = {
-            contents: [
-              { parts: [ { text: promptText } ] }
-            ]
-          };
-        } else if (settings.model === 'gemini-2.5-flash' || settings.model === 'gemini-pro') {
-          isGemini = true;
-          endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${settings.model}:generateContent?key=${settings.apiKey}`;
+        } else if (settings.model.startsWith('gemini-')) {
+          provider = 'gemini';
+          const baseUrl = settings.apiUrl || 'https://generativelanguage.googleapis.com/v1beta';
+          endpoint = `${baseUrl}/models/${settings.model}:generateContent?key=${settings.apiKey}`;
           const promptText = (message.prompt ? message.prompt + '\n' : '') + (message.text || '');
           body = {
             contents: [
@@ -38,42 +34,96 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ]
           };
         } else {
-          // fallback: использовать то, что указано в настройках
+          provider = 'custom';
           endpoint = settings.apiUrl;
-          headers['Authorization'] = `Bearer ${settings.apiKey}`;
-          body = {
-            model: settings.model,
-            prompt: message.prompt,
-            input: message.text
-          };
+          
+          if (!endpoint) {
+            throw new Error('Для кастомной модели необходимо указать API URL');
+          }
+
+          const format = settings.customEndpointFormat || 'openai';
+          
+          if (format === 'openai' || format === 'openai-compatible') {
+            headers['Authorization'] = `Bearer ${settings.apiKey}`;
+            body = {
+              model: settings.model,
+              messages: [
+                { role: 'system', content: message.prompt || '' },
+                { role: 'user', content: message.text || '' }
+              ]
+            };
+          } else if (format === 'ollama') {
+            body = {
+              model: settings.model,
+              prompt: (message.prompt ? message.prompt + '\n\n' : '') + (message.text || ''),
+              stream: false
+            };
+          } else if (format === 'custom') {
+            headers['Authorization'] = `Bearer ${settings.apiKey}`;
+            body = {
+              model: settings.model,
+              prompt: message.prompt || '',
+              input: message.text || '',
+              system_prompt: message.prompt || '',
+              user_input: message.text || ''
+            };
+          }
         }
-        console.log('[LLM] Provider:', isOpenAI ? 'OpenAI' : isGemini ? 'Gemini' : 'Custom');
-        console.log('[LLM] Endpoint:', endpoint);
-        console.log('[LLM] Headers:', headers);
-        console.log('[LLM] Body:', body);
+        const isDev = chrome.runtime.getManifest().version.includes('dev');
+        if (isDev) {
+          console.log('[LLM] Provider:', provider);
+          console.log('[LLM] Endpoint:', endpoint);
+          console.log('[LLM] Headers:', { ...headers, Authorization: headers.Authorization ? '[MASKED]' : undefined });
+          console.log('[LLM] Body:', { ...body, key: body.key ? '[MASKED]' : body.key });
+        }
+
         const response = await fetch(endpoint, {
           method: 'POST',
           headers,
           body: JSON.stringify(body)
         });
-        console.log('[LLM] Response status:', response.status);
+
+        if (isDev) {
+          console.log('[LLM] Response status:', response.status);
+        }
+
         let data = null;
         try {
           data = await response.clone().json();
         } catch (e) {
-          data = await response.clone().text();
+          const textData = await response.clone().text();
+          if (isDev) {
+            console.log('[LLM] Response is not JSON:', textData);
+          }
+          throw new Error(`Ответ API не является валидным JSON: ${textData.substring(0, 200)}`);
         }
-        console.log('[LLM] Response data:', data);
-        if (!response.ok) throw new Error('LLM API error: ' + JSON.stringify(data));
+
+        if (isDev) {
+          console.log('[LLM] Response data:', data);
+        }
+
+        if (!response.ok) {
+          const errorMsg = data?.error?.message || data?.message || JSON.stringify(data);
+          throw new Error(`LLM API error (${response.status}): ${errorMsg}`);
+        }
+
         // Унифицируем ответ для content.js
         let output = '';
-        if (isOpenAI && data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+        
+        if (provider === 'openai' && data?.choices?.[0]?.message?.content) {
           output = data.choices[0].message.content;
-        } else if (isGemini && data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+        } else if (provider === 'gemini' && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
           output = data.candidates[0].content.parts[0].text;
-        } else if (data && data.output) {
-          output = data.output;
+        } else if (provider === 'custom') {
+          output = data.response || data.output || data.text || data.content || 
+                   data.choices?.[0]?.message?.content || data.choices?.[0]?.text ||
+                   (typeof data === 'string' ? data : '');
         }
+
+        if (!output) {
+          throw new Error('Не удалось извлечь ответ из response API. Проверьте формат endpoint\'а.');
+        }
+
         sendResponse({ success: true, data: { output, raw: data } });
       } catch (e) {
         console.error('[LLM] Error:', e);
@@ -82,4 +132,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true; // async response
   }
-}); 
+});    
