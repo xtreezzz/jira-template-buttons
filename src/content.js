@@ -12,23 +12,44 @@
         console.log('[JiraTemplateButtons]', ...args);
     }
 
-    function getTemplate() {
-        return localStorage.getItem(TEMPLATE_KEY) || '';
+    async function getTemplate() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get([TEMPLATE_KEY], (data) => {
+                resolve(data[TEMPLATE_KEY] || '');
+            });
+        });
     }
 
     function setTemplate(val) {
-        localStorage.setItem(TEMPLATE_KEY, val);
+        chrome.storage.local.set({ [TEMPLATE_KEY]: val });
     }
 
+    let cachedDescriptionField = null;
+    let lastDOMCheck = 0;
+    const DOM_CACHE_TIMEOUT = 5000; // 5 секунд
+
     function findDescriptionFieldGroup() {
+        const now = Date.now();
+        
+        // Проверяем кэш и что элемент все еще в DOM
+        if (cachedDescriptionField && 
+            (now - lastDOMCheck) < DOM_CACHE_TIMEOUT &&
+            document.contains(cachedDescriptionField.textarea)) {
+            return cachedDescriptionField;
+        }
+
         const groups = document.querySelectorAll('.field-group');
         for (const group of groups) {
             const label = group.querySelector('label[for="description"]');
             const textarea = group.querySelector('textarea#description');
             if (label && textarea) {
-                return { group, textarea };
+                cachedDescriptionField = { group, textarea };
+                lastDOMCheck = now;
+                return cachedDescriptionField;
             }
         }
+        
+        cachedDescriptionField = null;
         return null;
     }
 
@@ -48,8 +69,8 @@
         return false;
     }
 
-    function insertTemplateUniversal(textarea) {
-        const template = getTemplate();
+    async function insertTemplateUniversal(textarea) {
+        const template = await getTemplate();
         // Попробовать активировать TinyMCE, если он должен быть
         textarea.focus();
         setTimeout(() => {
@@ -146,32 +167,82 @@
         let spinner = document.createElement('span');
         spinner.textContent = '⏳';
         spinner.style.marginLeft = '8px';
+        spinner.className = 'jira-llm-spinner';
         textarea.parentNode.insertBefore(spinner, textarea);
+        
         return new Promise((resolve) => {
-            chrome.runtime.sendMessage({ type: 'llm', prompt, text }, (response) => {
-                spinner.remove();
-                if (response && response.success) {
-                    resolve(response.data);
-                } else {
-                    alert('Ошибка LLM: ' + (response && response.error ? response.error : 'Unknown error'));
-                    resolve(null);
+            try {
+                chrome.runtime.sendMessage({ type: 'llm', prompt, text }, (response) => {
+                    if (spinner && spinner.parentNode) {
+                        spinner.remove();
+                    }
+                    
+                    if (chrome.runtime.lastError) {
+                        console.error('[JiraTemplateButtons] Runtime error:', chrome.runtime.lastError);
+                        alert('Ошибка соединения с расширением: ' + chrome.runtime.lastError.message);
+                        resolve(null);
+                        return;
+                    }
+                    
+                    if (response && response.success) {
+                        resolve(response.data);
+                    } else {
+                        const errorMsg = response?.error || 'Неизвестная ошибка';
+                        console.error('[JiraTemplateButtons] LLM error:', errorMsg);
+                        alert('Ошибка LLM: ' + errorMsg);
+                        resolve(null);
+                    }
+                });
+            } catch (error) {
+                if (spinner && spinner.parentNode) {
+                    spinner.remove();
                 }
-            });
+                console.error('[JiraTemplateButtons] Call error:', error);
+                alert('Ошибка вызова LLM: ' + error.message);
+                resolve(null);
+            }
         });
     }
 
     // --- История версий ---
     let history = [];
     let historyIndex = -1;
+    let historyLoaded = false;
 
-    function saveVersion(text) {
-        history = history.slice(0, historyIndex + 1);
-        history.push(text);
-        historyIndex = history.length - 1;
-        chrome.storage.local.set({ 'jira-helper-history': history, 'jira-helper-history-index': historyIndex });
+    async function loadHistory() {
+        if (historyLoaded) return;
+        
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['jira-helper-history', 'jira-helper-history-index'], (data) => {
+                history = data['jira-helper-history'] || [];
+                historyIndex = data['jira-helper-history-index'] || -1;
+                historyLoaded = true;
+                resolve();
+            });
+        });
     }
 
-    function goBack(setDescription) {
+    async function saveVersion(text) {
+        await loadHistory();
+        
+        const MAX_HISTORY = 50;
+        history = history.slice(0, historyIndex + 1);
+        history.push(text);
+        
+        if (history.length > MAX_HISTORY) {
+            history = history.slice(-MAX_HISTORY);
+        }
+        
+        historyIndex = history.length - 1;
+        chrome.storage.local.set({ 
+            'jira-helper-history': history, 
+            'jira-helper-history-index': historyIndex 
+        });
+    }
+
+    async function goBack(setDescription) {
+        await loadHistory();
+        
         if (historyIndex > 0) {
             historyIndex--;
             setDescription(history[historyIndex]);
@@ -179,7 +250,9 @@
         }
     }
 
-    function goForward(setDescription) {
+    async function goForward(setDescription) {
+        await loadHistory();
+        
         if (historyIndex < history.length - 1) {
             historyIndex++;
             setDescription(history[historyIndex]);
@@ -211,28 +284,47 @@
             });
         });
         const improveBtn = createButton('⚙️ Улучшить постановку', async () => {
-            const settings = await loadSettings();
-            const text = textarea.value;
-            const prompt = settings.systemPrompt || '';
-            const result = await callLLM(prompt, text, textarea);
-            if (result && result.output) {
-                const newText = `Вход:\n${text}\n\nВыход:\n${result.output}`;
-                textarea.value = newText;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                saveVersion(newText);
+            try {
+                const settings = await loadSettings();
+                const text = textarea.value;
+                const prompt = settings.systemPrompt || '';
+                
+                if (!text.trim()) {
+                    alert('Введите текст для улучшения');
+                    return;
+                }
+                
+                const result = await callLLM(prompt, text, textarea);
+                if (result && result.output) {
+                    const newText = `Вход:\n${text}\n\nВыход:\n${result.output}`;
+                    textarea.value = newText;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    await saveVersion(newText);
+                }
+            } catch (error) {
+                console.error('[JiraTemplateButtons] Improve error:', error);
+                alert('Ошибка при улучшении текста: ' + error.message);
             }
         });
-        const backBtn = createButton('⬅️ Назад', () => {
-            goBack((ver) => {
-                textarea.value = ver;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            });
+        const backBtn = createButton('⬅️ Назад', async () => {
+            try {
+                await goBack((ver) => {
+                    textarea.value = ver;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            } catch (error) {
+                console.error('[JiraTemplateButtons] History back error:', error);
+            }
         });
-        const forwardBtn = createButton('➡️ Вперед', () => {
-            goForward((ver) => {
-                textarea.value = ver;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            });
+        const forwardBtn = createButton('➡️ Вперед', async () => {
+            try {
+                await goForward((ver) => {
+                    textarea.value = ver;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            } catch (error) {
+                console.error('[JiraTemplateButtons] History forward error:', error);
+            }
         });
 
         panel.append(promptBtn, improveBtn, backBtn, forwardBtn);
@@ -252,10 +344,14 @@
         addButtonsToDescription();
     }
 
-    // MutationObserver для динамических изменений
-    const observer = new MutationObserver(() => {
-        init();
-    });
+    // Debounced MutationObserver для динамических изменений
+    let initTimeout;
+    const debouncedInit = () => {
+        clearTimeout(initTimeout);
+        initTimeout = setTimeout(init, 300);
+    };
+    
+    const observer = new MutationObserver(debouncedInit);
     observer.observe(document.body, { childList: true, subtree: true });
 
     // Первый запуск

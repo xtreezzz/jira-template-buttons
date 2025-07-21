@@ -10,10 +10,13 @@
   <form id="settings-form">
     <label>
       API URL:
-      <input type="text" id="apiUrl" list="apiUrlList" required>
+      <input type="text" id="apiUrl" list="apiUrlList" placeholder="Оставьте пустым для использования по умолчанию">
       <datalist id="apiUrlList">
-        <option value="https://api.openai.com/v1">
+        <option value="https://api.openai.com/v1/chat/completions">
         <option value="https://generativelanguage.googleapis.com/v1beta">
+        <option value="http://localhost:11434/api/generate">
+        <option value="http://localhost:8000/v1/chat/completions">
+        <option value="http://localhost:1234/v1/chat/completions">
       </datalist>
     </label>
     <label>
@@ -22,15 +25,32 @@
     </label>
     <label>
       Модель:
-      <select id="model">
+      <input type="text" id="model" list="modelList" placeholder="Введите название модели">
+      <datalist id="modelList">
         <optgroup label="OpenAI">
           <option value="gpt-4o">gpt-4o</option>
+          <option value="gpt-4">gpt-4</option>
+          <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
         </optgroup>
         <optgroup label="Gemini">
           <option value="gemini-2.0-flash">gemini-2.0-flash</option>
           <option value="gemini-2.5-flash">gemini-2.5-flash</option>
           <option value="gemini-pro">gemini-pro</option>
         </optgroup>
+        <optgroup label="Локальные модели">
+          <option value="llama3.2">llama3.2 (Ollama)</option>
+          <option value="codellama">codellama (Ollama)</option>
+          <option value="mistral">mistral (Ollama)</option>
+          <option value="qwen2.5">qwen2.5 (Ollama)</option>
+        </optgroup>
+      </datalist>
+    </label>
+    <label>
+      Формат API (для кастомных endpoint'ов):
+      <select id="customEndpointFormat">
+        <option value="openai">OpenAI-совместимый</option>
+        <option value="ollama">Ollama</option>
+        <option value="custom">Кастомный</option>
       </select>
     </label>
     <label>
@@ -42,4 +62,4 @@
   </form>
   <script src="options.js"></script>
 </body>
-</html> 
+</html>  

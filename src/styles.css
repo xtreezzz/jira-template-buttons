@@ -1,38 +1,90 @@
-.buttonJiraAddTemplateForBug {
-  position: absolute;
-  right: 10px;
-  top: 5px;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  line-height: 1;
-  border-radius: 3px;
-  border: 1px solid #dfe1e6;
-  background-color: #fff;
-  cursor: pointer;
-  text-align: center;
-  font-size: 14px;
-  z-index: 1000;
-}
-
-.buttonJiraSaveTemplateForBug {
-  position: absolute;
-  right: 10px;
-  top: 35px;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  line-height: 1;
-  border-radius: 3px;
-  border: 1px solid #dfe1e6;
-  background-color: #fff;
-  cursor: pointer;
-  text-align: center;
-  font-size: 14px;
-  z-index: 1000;
-}
-
-.buttonJiraAddTemplateForBug:hover,
-.buttonJiraSaveTemplateForBug:hover {
+/* Панель кнопок LLM */
+.jira-llm-buttons-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px;
   background-color: #f4f5f7;
+  border-radius: 4px;
+  border: 1px solid #dfe1e6;
+}
+
+.jira-llm-buttons-panel button {
+  padding: 6px 12px;
+  border: 1px solid #dfe1e6;
+  border-radius: 3px;
+  background-color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.2;
+  transition: background-color 0.2s ease;
+}
+
+.jira-llm-buttons-panel button:hover {
+  background-color: #e4e6ea;
+}
+
+.jira-llm-buttons-panel button:active {
+  background-color: #b3d4ff;
+}
+
+.jira-llm-buttons-panel button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Спиннер загрузки */
+.jira-llm-spinner {
+  display: inline-block;
+  margin-left: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Стили для страницы настроек */
+#settings-form {
+  max-width: 600px;
+  margin: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#settings-form label {
+  display: block;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+#settings-form input,
+#settings-form select,
+#settings-form textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #dfe1e6;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+#settings-form button {
+  background-color: #0052cc;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+#settings-form button:hover {
+  background-color: #0065ff;
+}
+
+#status {
+  font-weight: 500;
 }

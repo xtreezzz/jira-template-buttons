@@ -1,0 +1,37 @@
+{
+  "name": "jira-template-buttons",
+  "version": "2.3.0",
+  "description": "Chrome extension for Jira/Confluence with LLM-powered task improvement",
+  "scripts": {
+    "build": "npm run clean && npm run copy-files",
+    "build:dev": "npm run build && npm run set-dev-version",
+    "clean": "rm -rf dist && mkdir -p dist",
+    "copy-files": "cp -r src/* dist/ && cp manifest.json dist/ && cp -r icons dist/",
+    "set-dev-version": "node scripts/set-dev-version.js",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write src/**/*.{js,html,css}",
+    "validate": "npm run lint && npm run format",
+    "watch": "chokidar 'src/**/*' 'manifest.json' -c 'npm run build:dev'"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "chokidar-cli": "^3.0.0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "jira",
+    "confluence",
+    "llm",
+    "openai",
+    "gemini",
+    "productivity"
+  ],
+  "author": "xtreezzz",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xtreezzz/jira-template-buttons.git"
+  }
+}
