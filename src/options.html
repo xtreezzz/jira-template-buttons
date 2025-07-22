@@ -32,24 +32,26 @@
       <!-- Модели OpenAI -->
       <div id="openaiModels" style="display: none;">
         <label>
-          <select id="openaiModel">
-            <option value="">Выберите модель OpenAI</option>
+          Модель OpenAI:
+          <input type="text" id="openaiModel" list="openaiModelList" placeholder="Выберите или введите модель">
+          <datalist id="openaiModelList">
             <option value="gpt-4o">GPT-4o</option>
             <option value="gpt-4">GPT-4</option>
             <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-          </select>
+          </datalist>
         </label>
       </div>
 
       <!-- Модели Gemini -->
       <div id="geminiModels" style="display: none;">
         <label>
-          <select id="geminiModel">
-            <option value="">Выберите модель Gemini</option>
+          Модель Gemini:
+          <input type="text" id="geminiModel" list="geminiModelList" placeholder="Выберите или введите модель">
+          <datalist id="geminiModelList">
             <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
             <option value="gemini-pro">Gemini Pro</option>
-          </select>
+          </datalist>
         </label>
       </div>
 
@@ -94,34 +96,73 @@
 
       <!-- Настройки кастомного API -->
       <div id="customSettings" style="display: none;">
-        <label>
-          URL для получения токена:
-          <input type="text" id="authUrl" placeholder="https://your-api.com/auth/v1/token">
-        </label>
-        <label>
-          URL для чата:
-          <input type="text" id="chatUrl" placeholder="https://your-api.com/public/v1/chat/completions">
-        </label>
-        <label>
-          Имя пользователя:
-          <input type="text" id="username" placeholder="username">
-        </label>
-        <label>
-          Пароль:
-          <input type="password" id="password" placeholder="password">
-        </label>
-        <label>
-          Температура (0.0 - 2.0):
-          <input type="number" id="temperature" min="0" max="2" step="0.1" value="0.1">
-        </label>
-        <label>
-          Роль системы:
-          <input type="text" id="systemRole" value="system" placeholder="system">
-        </label>
-        <label>
-          Роль пользователя:
-          <input type="text" id="userRole" value="user" placeholder="user">
-        </label>
+        <div class="auth-type-selection">
+          <h4>Тип авторизации:</h4>
+          <label>
+            <input type="radio" name="customAuthType" value="token" id="authTypeToken">
+            Авторизация по токену
+          </label>
+          <label>
+            <input type="radio" name="customAuthType" value="login" id="authTypeLogin" checked>
+            Авторизация по логину и паролю
+          </label>
+        </div>
+
+        <!-- Token Auth Fields -->
+        <div id="tokenAuthFields" style="display: none;">
+          <label>
+            URL для чата:
+            <input type="text" id="chatUrlToken" placeholder="https://your-api.com/public/v1/chat/completions">
+          </label>
+          <label>
+            API токен:
+            <input type="password" id="apiToken" placeholder="your-api-token">
+          </label>
+          <label>
+            Температура (0.0 - 2.0):
+            <input type="number" id="temperatureToken" min="0" max="2" step="0.1" value="0.1">
+          </label>
+          <label>
+            Роль системы:
+            <input type="text" id="systemRoleToken" value="system" placeholder="system">
+          </label>
+          <label>
+            Роль пользователя:
+            <input type="text" id="userRoleToken" value="user" placeholder="user">
+          </label>
+        </div>
+
+        <!-- Login/Password Auth Fields -->
+        <div id="loginAuthFields">
+          <label>
+            URL для получения токена:
+            <input type="text" id="authUrl" placeholder="https://your-api.com/auth/v1/token">
+          </label>
+          <label>
+            URL для чата:
+            <input type="text" id="chatUrl" placeholder="https://your-api.com/public/v1/chat/completions">
+          </label>
+          <label>
+            Имя пользователя:
+            <input type="text" id="username" placeholder="username">
+          </label>
+          <label>
+            Пароль:
+            <input type="password" id="password" placeholder="password">
+          </label>
+          <label>
+            Температура (0.0 - 2.0):
+            <input type="number" id="temperature" min="0" max="2" step="0.1" value="0.1">
+          </label>
+          <label>
+            Роль системы:
+            <input type="text" id="systemRole" value="system" placeholder="system">
+          </label>
+          <label>
+            Роль пользователя:
+            <input type="text" id="userRole" value="user" placeholder="user">
+          </label>
+        </div>
       </div>
     </div>
 
@@ -140,4 +181,4 @@
   </form>
   <script src="options.js"></script>
 </body>
-</html>       
+</html>              

@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const geminiModel = document.getElementById('geminiModel');
   const customModelName = document.getElementById('customModelName');
   
+  const authTypeToken = document.getElementById('authTypeToken');
+  const authTypeLogin = document.getElementById('authTypeLogin');
+  const tokenAuthFields = document.getElementById('tokenAuthFields');
+  const loginAuthFields = document.getElementById('loginAuthFields');
+  
   const openaiSettings = document.getElementById('openaiSettings');
   const geminiSettings = document.getElementById('geminiSettings');
   const customSettings = document.getElementById('customSettings');
@@ -35,6 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const systemRole = document.getElementById('systemRole');
   const userRole = document.getElementById('userRole');
   const systemPrompt = document.getElementById('systemPrompt');
+  
+  const chatUrlToken = document.getElementById('chatUrlToken');
+  const apiToken = document.getElementById('apiToken');
+  const temperatureToken = document.getElementById('temperatureToken');
+  const systemRoleToken = document.getElementById('systemRoleToken');
+  const userRoleToken = document.getElementById('userRoleToken');
 
   let currentProvider = '';
   let currentModel = '';
@@ -47,16 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  openaiModel.addEventListener('change', (e) => {
-    if (e.target.value) {
-      currentModel = e.target.value;
+  openaiModel.addEventListener('input', (e) => {
+    if (e.target.value.trim()) {
+      currentModel = e.target.value.trim();
       showProviderSettings();
     }
   });
 
-  geminiModel.addEventListener('change', (e) => {
-    if (e.target.value) {
-      currentModel = e.target.value;
+  geminiModel.addEventListener('input', (e) => {
+    if (e.target.value.trim()) {
+      currentModel = e.target.value.trim();
       showProviderSettings();
     }
   });
@@ -65,6 +76,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.value.trim()) {
       currentModel = e.target.value.trim();
       showProviderSettings();
+    }
+  });
+
+  authTypeToken.addEventListener('change', () => {
+    if (authTypeToken.checked) {
+      tokenAuthFields.style.display = 'block';
+      loginAuthFields.style.display = 'none';
+    }
+  });
+
+  authTypeLogin.addEventListener('change', () => {
+    if (authTypeLogin.checked) {
+      tokenAuthFields.style.display = 'none';
+      loginAuthFields.style.display = 'block';
     }
   });
 
@@ -123,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     chrome.storage.sync.get([
-      'provider', 'apiUrl', 'model', 'systemPrompt',
+      'provider', 'apiUrl', 'model', 'systemPrompt', 'customAuthType',
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
     ], (syncData) => {
       chrome.storage.local.get(['apiKey', 'password'], (localData) => {
@@ -168,7 +193,24 @@ document.addEventListener('DOMContentLoaded', () => {
     temperature.value = data.temperature || 0.1;
     systemRole.value = data.systemRole || 'system';
     userRole.value = data.userRole || 'user';
-        systemPrompt.value = data.systemPrompt || '';
+    systemPrompt.value = data.systemPrompt || '';
+    
+    chatUrlToken.value = data.chatUrl || '';
+    apiToken.value = data.apiKey || '';
+    temperatureToken.value = data.temperature || 0.1;
+    systemRoleToken.value = data.systemRole || 'system';
+    userRoleToken.value = data.userRole || 'user';
+    
+    const authType = data.customAuthType || 'login';
+    if (authType === 'token') {
+      authTypeToken.checked = true;
+      tokenAuthFields.style.display = 'block';
+      loginAuthFields.style.display = 'none';
+    } else {
+      authTypeLogin.checked = true;
+      tokenAuthFields.style.display = 'none';
+      loginAuthFields.style.display = 'block';
+    }
       });
     });
   };
@@ -181,14 +223,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     chrome.storage.local.get([
-      'provider', 'apiUrl', 'model', 'systemPrompt',
+      'provider', 'apiUrl', 'model', 'systemPrompt', 'customAuthType',
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
     ], (oldData) => {
       if (Object.keys(oldData).length > 0) {
         console.log('[MIGRATION] Migrating settings from local to sync storage');
         
         const syncData = {};
-        const keysToMigrate = ['provider', 'apiUrl', 'model', 'systemPrompt', 'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'];
+        const keysToMigrate = ['provider', 'apiUrl', 'model', 'systemPrompt', 'customAuthType', 'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'];
         
         keysToMigrate.forEach(key => {
           if (oldData[key] !== undefined) {
@@ -239,9 +281,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (currentProvider === 'custom') {
-      if (!authUrl.value.trim() || !chatUrl.value.trim() || !username.value.trim() || !password.value.trim()) {
-        showError('Заполните все поля для кастомного API!');
-        return;
+      const authType = document.querySelector('input[name="customAuthType"]:checked').value;
+      
+      if (authType === 'token') {
+        if (!chatUrlToken.value.trim() || !apiToken.value.trim()) {
+          showError('Заполните URL чата и API токен!');
+          return;
+        }
+      } else {
+        if (!authUrl.value.trim() || !chatUrl.value.trim() || !username.value.trim() || !password.value.trim()) {
+          showError('Заполните все поля для кастомного API!');
+          return;
+        }
       }
     }
 
@@ -260,14 +311,26 @@ document.addEventListener('DOMContentLoaded', () => {
       settingsData.apiKey = geminiKey.value.trim();
       settingsData.customEndpointFormat = 'gemini';
     } else if (currentProvider === 'custom') {
-      settingsData.authUrl = authUrl.value.trim();
-      settingsData.chatUrl = chatUrl.value.trim();
-      settingsData.username = username.value.trim();
-      settingsData.password = password.value.trim();
-      settingsData.temperature = parseFloat(temperature.value) || 0.1;
-      settingsData.systemRole = systemRole.value.trim() || 'system';
-      settingsData.userRole = userRole.value.trim() || 'user';
-      settingsData.customEndpointFormat = 'token-auth';
+      const authType = document.querySelector('input[name="customAuthType"]:checked').value;
+      settingsData.customAuthType = authType;
+      
+      if (authType === 'token') {
+        settingsData.chatUrl = chatUrlToken.value.trim();
+        settingsData.apiKey = apiToken.value.trim();
+        settingsData.temperature = parseFloat(temperatureToken.value) || 0.1;
+        settingsData.systemRole = systemRoleToken.value.trim() || 'system';
+        settingsData.userRole = userRoleToken.value.trim() || 'user';
+        settingsData.customEndpointFormat = 'token-direct';
+      } else {
+        settingsData.authUrl = authUrl.value.trim();
+        settingsData.chatUrl = chatUrl.value.trim();
+        settingsData.username = username.value.trim();
+        settingsData.password = password.value.trim();
+        settingsData.temperature = parseFloat(temperature.value) || 0.1;
+        settingsData.systemRole = systemRole.value.trim() || 'system';
+        settingsData.userRole = userRole.value.trim() || 'user';
+        settingsData.customEndpointFormat = 'token-auth';
+      }
     }
 
     const syncData = {
@@ -276,6 +339,10 @@ document.addEventListener('DOMContentLoaded', () => {
       systemPrompt: settingsData.systemPrompt,
       customEndpointFormat: settingsData.customEndpointFormat
     };
+    
+    if (settingsData.customAuthType) {
+      syncData.customAuthType = settingsData.customAuthType;
+    }
 
     const localData = {};
 
@@ -286,13 +353,23 @@ document.addEventListener('DOMContentLoaded', () => {
       syncData.apiUrl = settingsData.apiUrl;
       localData.apiKey = settingsData.apiKey;
     } else if (currentProvider === 'custom') {
-      syncData.authUrl = settingsData.authUrl;
-      syncData.chatUrl = settingsData.chatUrl;
-      syncData.username = settingsData.username;
-      syncData.temperature = settingsData.temperature;
-      syncData.systemRole = settingsData.systemRole;
-      syncData.userRole = settingsData.userRole;
-      localData.password = settingsData.password;
+      const authType = settingsData.customAuthType;
+      
+      if (authType === 'token') {
+        syncData.chatUrl = settingsData.chatUrl;
+        syncData.temperature = settingsData.temperature;
+        syncData.systemRole = settingsData.systemRole;
+        syncData.userRole = settingsData.userRole;
+        localData.apiKey = settingsData.apiKey;
+      } else {
+        syncData.authUrl = settingsData.authUrl;
+        syncData.chatUrl = settingsData.chatUrl;
+        syncData.username = settingsData.username;
+        syncData.temperature = settingsData.temperature;
+        syncData.systemRole = settingsData.systemRole;
+        syncData.userRole = settingsData.userRole;
+        localData.password = settingsData.password;
+      }
     }
 
     if (typeof chrome === 'undefined' || !chrome.storage) {
@@ -324,4 +401,4 @@ document.addEventListener('DOMContentLoaded', () => {
       status.style.color = '';
     }, 1500);
   }
-});                                                        
+});                                                                                                                
