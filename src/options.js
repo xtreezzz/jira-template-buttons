@@ -229,8 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
     ], (oldData) => {
       if (Object.keys(oldData).length > 0) {
-        console.log('[MIGRATION] Migrating settings from local to sync storage');
-        
         const syncData = {};
         const keysToMigrate = ['provider', 'apiUrl', 'model', 'systemPrompt', 'jiraTemplate', 'customAuthType', 'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'];
         
@@ -242,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (Object.keys(syncData).length > 0) {
           chrome.storage.sync.set(syncData, () => {
-            console.log('[MIGRATION] Settings migrated successfully');
             chrome.storage.local.remove(keysToMigrate, () => {
               loadSettings();
             });
@@ -404,4 +401,4 @@ document.addEventListener('DOMContentLoaded', () => {
       status.style.color = '';
     }, 1500);
   }
-});                                                                                                                                                                                                                                                                                                                                                
+});                                                                                                                                                                                                                                                                                                                                                                                                                                                                

@@ -79,7 +79,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               throw new Error('Для токен-аутентификации необходимо указать authUrl, chatUrl, username и password');
             }
 
-            console.log('[DEBUG] Attempting authentication to:', settings.authUrl);
             
             const authResponse = await fetch(settings.authUrl, {
               method: 'POST',
@@ -90,17 +89,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               })
             });
 
-            console.log('[DEBUG] Auth response status:', authResponse.status);
-            console.log('[DEBUG] Auth response headers:', Object.fromEntries(authResponse.headers.entries()));
 
             if (!authResponse.ok) {
               const authError = await authResponse.text();
-              console.log('[DEBUG] Auth error response:', authError);
               throw new Error(`Ошибка аутентификации (${authResponse.status}): ${authError}`);
             }
 
             const authData = await authResponse.json();
-            console.log('[DEBUG] Auth response data:', { ...authData, access_token: authData.access_token ? '[RECEIVED]' : '[NOT RECEIVED]' });
             const accessToken = authData.access_token;
             
             if (!accessToken) {
@@ -163,23 +158,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('[LLM] Body:', { ...body, key: body.key ? '[MASKED]' : body.key });
         }
 
-        if (settings.customEndpointFormat === 'token-auth') {
-          console.log('[DEBUG] Custom API Debug Info:');
-          console.log('[DEBUG] Auth URL:', settings.authUrl);
-          console.log('[DEBUG] Chat URL:', settings.chatUrl);
-          console.log('[DEBUG] Username:', settings.username ? '[SET]' : '[NOT SET]');
-          console.log('[DEBUG] Password:', settings.password ? '[SET]' : '[NOT SET]');
-          console.log('[DEBUG] Model:', settings.model);
-          console.log('[DEBUG] Temperature:', settings.temperature);
-          console.log('[DEBUG] System Role:', settings.systemRole);
-          console.log('[DEBUG] User Role:', settings.userRole);
-          console.log('[DEBUG] System Prompt:', enhancedPrompt ? `"${enhancedPrompt.substring(0, 100)}${enhancedPrompt.length > 100 ? '...' : ''}"` : '[EMPTY]');
-          console.log('[DEBUG] User Message:', message.text ? `"${message.text.substring(0, 100)}${message.text.length > 100 ? '...' : ''}"` : '[EMPTY]');
-          console.log('[DEBUG] Request Body:', JSON.stringify(body, null, 2));
-        }
 
-        console.log('[DEBUG] Making request to:', endpoint);
-        console.log('[DEBUG] Request headers:', { ...headers, Authorization: headers.Authorization ? '[MASKED]' : undefined });
         
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -187,8 +166,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           body: JSON.stringify(body)
         });
 
-        console.log('[DEBUG] Response status:', response.status);
-        console.log('[DEBUG] Response headers:', Object.fromEntries(response.headers.entries()));
         
         if (isDev) {
           console.log('[LLM] Response status:', response.status);
@@ -199,14 +176,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           data = await response.clone().json();
         } catch (e) {
           const textData = await response.clone().text();
-          console.log('[DEBUG] Response is not JSON, raw text:', textData.substring(0, 500));
           if (isDev) {
             console.log('[LLM] Response is not JSON:', textData);
           }
           throw new Error(`Ответ API не является валидным JSON: ${textData.substring(0, 200)}`);
         }
 
-        console.log('[DEBUG] Response data:', JSON.stringify(data, null, 2));
         
         if (isDev) {
           console.log('[LLM] Response data:', data);
@@ -214,7 +189,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         if (!response.ok) {
           const errorMsg = data?.error?.message || data?.message || JSON.stringify(data);
-          console.log('[DEBUG] API Error - Status:', response.status, 'Message:', errorMsg);
           throw new Error(`LLM API error (${response.status}): ${errorMsg}`);
         }
 
@@ -228,7 +202,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         } else if (provider === 'custom') {
           if (settings.customEndpointFormat === 'token-auth') {
             output = data.choices?.[0]?.message?.content || '';
-            console.log('[DEBUG] Extracted output from token-auth response:', output ? `"${output.substring(0, 100)}${output.length > 100 ? '...' : ''}"` : '[EMPTY]');
           } else {
             output = data.response || data.output || data.text || data.content || 
                      data.choices?.[0]?.message?.content || data.choices?.[0]?.text ||
@@ -237,11 +210,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         if (!output) {
-          console.log('[DEBUG] Failed to extract output. Available response fields:', Object.keys(data || {}));
           throw new Error('Не удалось извлечь ответ из response API. Проверьте формат endpoint\'а.');
         }
 
-        console.log('[DEBUG] Final extracted output:', output ? `"${output.substring(0, 100)}${output.length > 100 ? '...' : ''}"` : '[EMPTY]');
 
         if (settings.customEndpointFormat === 'token-auth') {
           const debugInfo = {
@@ -275,4 +246,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true; // async response
   }
-});                                                                                                                                                                                              
+});                                                                                                                                                                                                                                    

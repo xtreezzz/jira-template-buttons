@@ -9,7 +9,6 @@
     const SAVE_BTN_ID = 'jira-template-save-btn';
 
     function log(...args) {
-        console.log('[JiraTemplateButtons]', ...args);
     }
 
     async function getTemplate() {
@@ -186,14 +185,6 @@
                     }
                     
                     if (response && response.success) {
-                        if (response.debugInfo) {
-                            console.log('[DEBUG] Custom API Request Success:');
-                            console.log('[DEBUG] Auth URL:', response.debugInfo.authUrl);
-                            console.log('[DEBUG] Chat URL:', response.debugInfo.chatUrl);
-                            console.log('[DEBUG] Model:', response.debugInfo.model);
-                            console.log('[DEBUG] Response Status:', response.debugInfo.responseStatus);
-                            console.log('[DEBUG] Timestamp:', response.debugInfo.timestamp);
-                        }
                         resolve(response.data);
                     } else {
                         const errorMsg = response?.error || 'Неизвестная ошибка';
