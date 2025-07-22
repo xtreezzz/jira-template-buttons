@@ -1,7 +1,7 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'llm') {
     chrome.storage.sync.get([
-      'apiUrl', 'model', 'systemPrompt', 'customEndpointFormat',
+      'apiUrl', 'model', 'systemPrompt', 'customEndpointFormat', 'customAuthType',
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
     ], async (syncData) => {
       chrome.storage.local.get(['apiKey', 'password'], async (localData) => {
@@ -48,7 +48,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           provider = 'custom';
           const format = settings.customEndpointFormat || 'openai';
           
-          if (format === 'token-auth') {
+          if (format === 'token-direct') {
+            endpoint = settings.chatUrl;
+            headers = {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${settings.apiKey}`
+            };
+
+            const messages = [];
+            if (message.prompt) {
+              messages.push({ role: settings.systemRole || 'system', content: message.prompt });
+            }
+            if (message.text) {
+              messages.push({ role: settings.userRole || 'user', content: message.text });
+            }
+
+            body = {
+              model: settings.model,
+              temperature: settings.temperature || 0.1,
+              messages: messages
+            };
+          } else if (format === 'token-auth') {
             if (!settings.authUrl || !settings.chatUrl || !settings.username || !settings.password) {
               throw new Error('Для токен-аутентификации необходимо указать authUrl, chatUrl, username и password');
             }
@@ -255,4 +275,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true; // async response
   }
-});                   
+});                                      
