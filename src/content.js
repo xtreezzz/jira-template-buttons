@@ -118,13 +118,15 @@
 
     async function loadSettings() {
         return new Promise((resolve) => {
-            chrome.storage.local.get(['apiUrl', 'apiKey', 'model', 'systemPrompt', 'jiraTemplate'], (data) => {
-                resolve({
-                    apiUrl: data.apiUrl || '',
-                    apiKey: data.apiKey || '',
-                    model: data.model || 'gpt-3.5-turbo',
-                    systemPrompt: data.systemPrompt || '',
-                    jiraTemplate: data.jiraTemplate || ''
+            chrome.storage.sync.get(['apiUrl', 'model', 'systemPrompt', 'jiraTemplate'], (syncData) => {
+                chrome.storage.local.get(['apiKey'], (localData) => {
+                    resolve({
+                        apiUrl: syncData.apiUrl || '',
+                        apiKey: localData.apiKey || '',
+                        model: syncData.model || 'gpt-3.5-turbo',
+                        systemPrompt: syncData.systemPrompt || '',
+                        jiraTemplate: syncData.jiraTemplate || ''
+                    });
                 });
             });
         });
@@ -290,7 +292,7 @@
         const promptBtn = createButton('🔁 Уточнить системный промпт', async () => {
             const settings = await loadSettings();
             showPromptModal(settings.systemPrompt, (newPrompt) => {
-                chrome.storage.local.set({ systemPrompt: newPrompt });
+                chrome.storage.sync.set({ systemPrompt: newPrompt });
             });
         });
         const improveBtn = createButton('⚙️ Улучшить постановку', async () => {
