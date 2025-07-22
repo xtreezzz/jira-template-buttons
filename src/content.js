@@ -119,12 +119,13 @@
 
     async function loadSettings() {
         return new Promise((resolve) => {
-            chrome.storage.local.get(['apiUrl', 'apiKey', 'model', 'systemPrompt'], (data) => {
+            chrome.storage.local.get(['apiUrl', 'apiKey', 'model', 'systemPrompt', 'jiraTemplate'], (data) => {
                 resolve({
                     apiUrl: data.apiUrl || '',
                     apiKey: data.apiKey || '',
                     model: data.model || 'gpt-3.5-turbo',
-                    systemPrompt: data.systemPrompt || ''
+                    systemPrompt: data.systemPrompt || '',
+                    jiraTemplate: data.jiraTemplate || ''
                 });
             });
         });
@@ -314,10 +315,9 @@
                 
                 const result = await callLLM(prompt, text, textarea);
                 if (result && result.output) {
-                    const newText = `Вход:\n${text}\n\nВыход:\n${result.output}`;
-                    textarea.value = newText;
+                    textarea.value = result.output;
                     textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    await saveVersion(newText);
+                    await saveVersion(result.output);
                 }
             } catch (error) {
                 console.error('[JiraTemplateButtons] Improve error:', error);

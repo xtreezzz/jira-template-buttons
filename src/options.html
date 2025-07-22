@@ -172,6 +172,12 @@
       <label>
         <textarea id="systemPrompt" rows="4" placeholder="Введите системный промпт для улучшения ответов модели..."></textarea>
       </label>
+      
+      <h4>Шаблон Jira задачи (необязательно)</h4>
+      <label>
+        <textarea id="jiraTemplate" rows="6" placeholder="Введите пример шаблона Jira задачи для few-shot prompting...&#10;&#10;Например:&#10;Заголовок: Исправить баг с авторизацией&#10;Описание: При входе в систему пользователи получают ошибку 500...&#10;Приоритет: High&#10;Компонент: Authentication"></textarea>
+        <small>Этот шаблон будет использоваться как пример для LLM при генерации задач</small>
+      </label>
     </div>
 
     <div id="saveSection" style="display: none;">
@@ -181,4 +187,4 @@
   </form>
   <script src="options.js"></script>
 </body>
-</html>              
+</html>                            
