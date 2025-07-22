@@ -164,6 +164,39 @@
         document.body.appendChild(modal);
     }
 
+    function showTemplateModal(currentTemplate, onSave) {
+        // Простое модальное окно для редактирования шаблона Jira
+        const modal = document.createElement('div');
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0,0,0,0.3)';
+        modal.style.zIndex = '9999';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+
+        const box = document.createElement('div');
+        box.style.background = '#fff';
+        box.style.padding = '24px';
+        box.style.borderRadius = '8px';
+        box.style.minWidth = '400px';
+        box.style.maxWidth = '600px';
+        box.innerHTML = `<h3>Шаблон Jira</h3><textarea style="width:100%;height:150px;" placeholder="Введите шаблон для few-shot prompting...">${currentTemplate || ''}</textarea><br><button>Сохранить</button> <button type="button">Отмена</button>`;
+        const textarea = box.querySelector('textarea');
+        const saveBtn = box.querySelector('button');
+        const cancelBtn = box.querySelectorAll('button')[1];
+        saveBtn.onclick = () => {
+            onSave(textarea.value);
+            document.body.removeChild(modal);
+        };
+        cancelBtn.onclick = () => document.body.removeChild(modal);
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+    }
+
     async function callLLM(prompt, text, textarea) {
         // Показать спиннер
         let spinner = document.createElement('span');
@@ -295,6 +328,12 @@
                 chrome.storage.sync.set({ systemPrompt: newPrompt });
             });
         });
+        const templateBtn = createButton('📝 Уточнить шаблон', async () => {
+            const settings = await loadSettings();
+            showTemplateModal(settings.jiraTemplate, (newTemplate) => {
+                chrome.storage.sync.set({ jiraTemplate: newTemplate });
+            });
+        });
         const improveBtn = createButton('⚙️ Улучшить постановку', async () => {
             try {
                 const settings = await loadSettings();
@@ -338,7 +377,7 @@
             }
         });
 
-        panel.append(promptBtn, improveBtn, backBtn, forwardBtn);
+        panel.append(promptBtn, templateBtn, improveBtn, backBtn, forwardBtn);
         textarea.parentNode.insertBefore(panel, textarea);
     }
 
