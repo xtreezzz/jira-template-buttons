@@ -9,7 +9,6 @@
     const SAVE_BTN_ID = 'jira-template-save-btn';
 
     function log(...args) {
-        console.log('[JiraTemplateButtons]', ...args);
     }
 
     async function getTemplate() {
@@ -119,12 +118,15 @@
 
     async function loadSettings() {
         return new Promise((resolve) => {
-            chrome.storage.local.get(['apiUrl', 'apiKey', 'model', 'systemPrompt'], (data) => {
-                resolve({
-                    apiUrl: data.apiUrl || '',
-                    apiKey: data.apiKey || '',
-                    model: data.model || 'gpt-3.5-turbo',
-                    systemPrompt: data.systemPrompt || ''
+            chrome.storage.sync.get(['apiUrl', 'model', 'systemPrompt', 'jiraTemplate'], (syncData) => {
+                chrome.storage.local.get(['apiKey'], (localData) => {
+                    resolve({
+                        apiUrl: syncData.apiUrl || '',
+                        apiKey: localData.apiKey || '',
+                        model: syncData.model || 'gpt-3.5-turbo',
+                        systemPrompt: syncData.systemPrompt || '',
+                        jiraTemplate: syncData.jiraTemplate || ''
+                    });
                 });
             });
         });
@@ -185,14 +187,6 @@
                     }
                     
                     if (response && response.success) {
-                        if (response.debugInfo) {
-                            console.log('[DEBUG] Custom API Request Success:');
-                            console.log('[DEBUG] Auth URL:', response.debugInfo.authUrl);
-                            console.log('[DEBUG] Chat URL:', response.debugInfo.chatUrl);
-                            console.log('[DEBUG] Model:', response.debugInfo.model);
-                            console.log('[DEBUG] Response Status:', response.debugInfo.responseStatus);
-                            console.log('[DEBUG] Timestamp:', response.debugInfo.timestamp);
-                        }
                         resolve(response.data);
                     } else {
                         const errorMsg = response?.error || 'Неизвестная ошибка';
@@ -298,7 +292,7 @@
         const promptBtn = createButton('🔁 Уточнить системный промпт', async () => {
             const settings = await loadSettings();
             showPromptModal(settings.systemPrompt, (newPrompt) => {
-                chrome.storage.local.set({ systemPrompt: newPrompt });
+                chrome.storage.sync.set({ systemPrompt: newPrompt });
             });
         });
         const improveBtn = createButton('⚙️ Улучшить постановку', async () => {
@@ -314,10 +308,9 @@
                 
                 const result = await callLLM(prompt, text, textarea);
                 if (result && result.output) {
-                    const newText = `Вход:\n${text}\n\nВыход:\n${result.output}`;
-                    textarea.value = newText;
+                    textarea.value = result.output;
                     textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    await saveVersion(newText);
+                    await saveVersion(result.output);
                 }
             } catch (error) {
                 console.error('[JiraTemplateButtons] Improve error:', error);
