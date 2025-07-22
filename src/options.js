@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const systemRole = document.getElementById('systemRole');
   const userRole = document.getElementById('userRole');
   const systemPrompt = document.getElementById('systemPrompt');
+  const jiraTemplate = document.getElementById('jiraTemplate');
   
   const chatUrlToken = document.getElementById('chatUrlToken');
   const apiToken = document.getElementById('apiToken');
@@ -148,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     chrome.storage.sync.get([
-      'provider', 'apiUrl', 'model', 'systemPrompt', 'customAuthType',
+      'provider', 'apiUrl', 'model', 'systemPrompt', 'jiraTemplate', 'customAuthType',
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
     ], (syncData) => {
       chrome.storage.local.get(['apiKey', 'password'], (localData) => {
@@ -194,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     systemRole.value = data.systemRole || 'system';
     userRole.value = data.userRole || 'user';
     systemPrompt.value = data.systemPrompt || '';
+    jiraTemplate.value = data.jiraTemplate || '';
     
     chatUrlToken.value = data.chatUrl || '';
     apiToken.value = data.apiKey || '';
@@ -223,14 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     chrome.storage.local.get([
-      'provider', 'apiUrl', 'model', 'systemPrompt', 'customAuthType',
+      'provider', 'apiUrl', 'model', 'systemPrompt', 'jiraTemplate', 'customAuthType',
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
     ], (oldData) => {
       if (Object.keys(oldData).length > 0) {
         console.log('[MIGRATION] Migrating settings from local to sync storage');
         
         const syncData = {};
-        const keysToMigrate = ['provider', 'apiUrl', 'model', 'systemPrompt', 'customAuthType', 'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'];
+        const keysToMigrate = ['provider', 'apiUrl', 'model', 'systemPrompt', 'jiraTemplate', 'customAuthType', 'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'];
         
         keysToMigrate.forEach(key => {
           if (oldData[key] !== undefined) {
@@ -337,6 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
       provider: settingsData.provider,
       model: settingsData.model,
       systemPrompt: settingsData.systemPrompt,
+      jiraTemplate: jiraTemplate.value.trim(),
       customEndpointFormat: settingsData.customEndpointFormat
     };
     
@@ -401,4 +404,4 @@ document.addEventListener('DOMContentLoaded', () => {
       status.style.color = '';
     }, 1500);
   }
-});                                                                                                                
+});                                                                                                                                                                                                                                                                                                                                                

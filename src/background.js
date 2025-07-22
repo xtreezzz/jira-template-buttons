@@ -1,11 +1,17 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'llm') {
     chrome.storage.sync.get([
-      'apiUrl', 'model', 'systemPrompt', 'customEndpointFormat', 'customAuthType',
+      'apiUrl', 'model', 'systemPrompt', 'jiraTemplate', 'customEndpointFormat', 'customAuthType',
       'authUrl', 'chatUrl', 'username', 'temperature', 'systemRole', 'userRole'
     ], async (syncData) => {
       chrome.storage.local.get(['apiKey', 'password'], async (localData) => {
         const settings = { ...syncData, ...localData };
+        
+        let enhancedPrompt = message.prompt || '';
+        if (settings.jiraTemplate && settings.jiraTemplate.trim()) {
+          enhancedPrompt = `${enhancedPrompt}\n\nПример хорошо оформленной Jira задачи:\n${settings.jiraTemplate.trim()}\n\nИспользуйте этот пример как образец для форматирования и структуры.`;
+        }
+        
       try {
         if (settings.customEndpointFormat === 'token-auth') {
           if (!settings.model) {
@@ -30,7 +36,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           body = {
             model: settings.model,
             messages: [
-              { role: 'system', content: message.prompt || '' },
+              { role: 'system', content: enhancedPrompt },
               { role: 'user', content: message.text || '' }
             ]
           };
@@ -38,7 +44,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           provider = 'gemini';
           const baseUrl = settings.apiUrl || 'https://generativelanguage.googleapis.com/v1beta';
           endpoint = `${baseUrl}/models/${settings.model}:generateContent?key=${settings.apiKey}`;
-          const promptText = (message.prompt ? message.prompt + '\n' : '') + (message.text || '');
+          const promptText = (enhancedPrompt ? enhancedPrompt + '\n' : '') + (message.text || '');
           body = {
             contents: [
               { parts: [ { text: promptText } ] }
@@ -56,8 +62,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             };
 
             const messages = [];
-            if (message.prompt) {
-              messages.push({ role: settings.systemRole || 'system', content: message.prompt });
+            if (enhancedPrompt) {
+              messages.push({ role: settings.systemRole || 'system', content: enhancedPrompt });
             }
             if (message.text) {
               messages.push({ role: settings.userRole || 'user', content: message.text });
@@ -109,8 +115,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             };
 
             const messages = [];
-            if (message.prompt) {
-              messages.push({ role: settings.systemRole || 'system', content: message.prompt });
+            if (enhancedPrompt) {
+              messages.push({ role: settings.systemRole || 'system', content: enhancedPrompt });
             }
             if (message.text) {
               messages.push({ role: settings.userRole || 'user', content: message.text });
@@ -133,23 +139,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               body = {
                 model: settings.model,
                 messages: [
-                  { role: 'system', content: message.prompt || '' },
+                  { role: 'system', content: enhancedPrompt },
                   { role: 'user', content: message.text || '' }
                 ]
               };
             } else if (format === 'ollama') {
               body = {
                 model: settings.model,
-                prompt: (message.prompt ? message.prompt + '\n\n' : '') + (message.text || ''),
+                prompt: (enhancedPrompt ? enhancedPrompt + '\n\n' : '') + (message.text || ''),
                 stream: false
               };
             } else if (format === 'custom') {
               headers['Authorization'] = `Bearer ${settings.apiKey}`;
               body = {
                 model: settings.model,
-                prompt: message.prompt || '',
+                prompt: enhancedPrompt,
                 input: message.text || '',
-                system_prompt: message.prompt || '',
+                system_prompt: enhancedPrompt,
                 user_input: message.text || ''
               };
             }
@@ -173,7 +179,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('[DEBUG] Temperature:', settings.temperature);
           console.log('[DEBUG] System Role:', settings.systemRole);
           console.log('[DEBUG] User Role:', settings.userRole);
-          console.log('[DEBUG] System Prompt:', message.prompt ? `"${message.prompt.substring(0, 100)}${message.prompt.length > 100 ? '...' : ''}"` : '[EMPTY]');
+          console.log('[DEBUG] System Prompt:', enhancedPrompt ? `"${enhancedPrompt.substring(0, 100)}${enhancedPrompt.length > 100 ? '...' : ''}"` : '[EMPTY]');
           console.log('[DEBUG] User Message:', message.text ? `"${message.text.substring(0, 100)}${message.text.length > 100 ? '...' : ''}"` : '[EMPTY]');
           console.log('[DEBUG] Request Body:', JSON.stringify(body, null, 2));
         }
@@ -275,4 +281,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true; // async response
   }
-});                                      
+});                                                                                                                                                        
