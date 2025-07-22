@@ -16,9 +16,9 @@
       "matches": [
         "https://*.atlassian.net/*",
         "https://*.jira.com/*",
-        "https://jira.*.*/*",
-        "https://jira2.*.*/*",
-        "https://jira3.*.*/*",
+        "https://jira*.*/*",
+        "https://jira2*.*/*",
+        "https://jira3*.*/*",
         "http://localhost/*"
       ],
       "js": ["src/content.js"],
@@ -34,9 +34,9 @@
     "https://generativelanguage.googleapis.com/*",
     "https://*.atlassian.net/*",
     "https://*.jira.com/*",
-    "https://jira.*.*/*",
-    "https://jira2.*.*/*",
-    "https://jira3.*.*/*",
+    "https://jira*.*/*",
+    "https://jira2*.*/*",
+    "https://jira3*.*/*",
     "http://localhost:*/*",
     "https://localhost:*/*"
   ]
