@@ -143,12 +143,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   { role: 'user', content: message.text || '' }
                 ]
               };
-            } else if (format === 'ollama') {
-              body = {
-                model: settings.model,
-                prompt: (enhancedPrompt ? enhancedPrompt + '\n\n' : '') + (message.text || ''),
-                stream: false
-              };
             } else if (format === 'custom') {
               headers['Authorization'] = `Bearer ${settings.apiKey}`;
               body = {
@@ -281,4 +275,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true; // async response
   }
-});                                                                                                                                                        
+});                                                                                                                                                                                              
