@@ -25,15 +25,16 @@
 
     let cachedDescriptionField = null;
     let lastDOMCheck = 0;
-    const DOM_CACHE_TIMEOUT = 5000; // 5 секунд
+    const DOM_CACHE_TIMEOUT = 1000; // Уменьшено до 1 секунды для лучшего обнаружения переходов
 
     function findDescriptionFieldGroup() {
         const now = Date.now();
         
-        // Проверяем кэш и что элемент все еще в DOM
+        // Проверяем кэш и что элемент все еще в DOM и видим
         if (cachedDescriptionField && 
             (now - lastDOMCheck) < DOM_CACHE_TIMEOUT &&
-            document.contains(cachedDescriptionField.textarea)) {
+            document.contains(cachedDescriptionField.textarea) &&
+            cachedDescriptionField.textarea.offsetParent !== null) {
             return cachedDescriptionField;
         }
 
@@ -41,7 +42,7 @@
         for (const group of groups) {
             const label = group.querySelector('label[for="description"]');
             const textarea = group.querySelector('textarea#description');
-            if (label && textarea) {
+            if (label && textarea && textarea.offsetParent !== null) {
                 cachedDescriptionField = { group, textarea };
                 lastDOMCheck = now;
                 return cachedDescriptionField;
@@ -92,8 +93,8 @@
             }
             // Если TinyMCE не активен — fallback на textarea
             if (textarea.offsetParent !== null) {
-                textarea.value += (textarea.value ? '\n' : '') + template;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                const newValue = textarea.value + (textarea.value ? '\n' : '') + template;
+                updateTextareaValue(textarea, newValue);
                 log('Template appended to textarea');
                 return;
             }
@@ -112,6 +113,29 @@
             log('Template saved from textarea');
         }
         setTemplate(value);
+    }
+
+    function updateTextareaValue(textarea, value) {
+        // Проверяем, есть ли активный TinyMCE для этого textarea
+        const editor = isTinyMCEActive(textarea);
+        
+        if (editor) {
+            editor.setContent(value);
+            editor.fire('change');
+            log('Updated via TinyMCE');
+        } else {
+            textarea.value = value;
+            
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            textarea.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            textarea.dispatchEvent(new Event('keyup', { bubbles: true }));
+            textarea.dispatchEvent(new Event('blur', { bubbles: true }));
+            
+            textarea.focus();
+            
+            log('Updated via textarea with multiple events');
+        }
     }
 
     // --- LLM & History logic ---
@@ -347,8 +371,7 @@
                 
                 const result = await callLLM(prompt, text, textarea);
                 if (result && result.output) {
-                    textarea.value = result.output;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateTextareaValue(textarea, result.output);
                     await saveVersion(result.output);
                 }
             } catch (error) {
@@ -359,8 +382,7 @@
         const backBtn = createButton('⬅️ Назад', async () => {
             try {
                 await goBack((ver) => {
-                    textarea.value = ver;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateTextareaValue(textarea, ver);
                 });
             } catch (error) {
                 console.error('[JiraTemplateButtons] History back error:', error);
@@ -369,8 +391,7 @@
         const forwardBtn = createButton('➡️ Вперед', async () => {
             try {
                 await goForward((ver) => {
-                    textarea.value = ver;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateTextareaValue(textarea, ver);
                 });
             } catch (error) {
                 console.error('[JiraTemplateButtons] History forward error:', error);
@@ -398,7 +419,10 @@
     let initTimeout;
     const debouncedInit = () => {
         clearTimeout(initTimeout);
-        initTimeout = setTimeout(init, 300);
+        initTimeout = setTimeout(() => {
+            cachedDescriptionField = null;
+            init();
+        }, 300);
     };
     
     const observer = new MutationObserver(debouncedInit);
