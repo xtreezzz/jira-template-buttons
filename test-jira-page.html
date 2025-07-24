@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Jira Page - Extension Testing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .field-group {
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+        }
+        .mode-switcher {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 4px;
+        }
+        .mode-switcher button {
+            margin-right: 10px;
+            padding: 8px 16px;
+            border: 1px solid #2196f3;
+            background: white;
+            color: #2196f3;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .mode-switcher button.active {
+            background: #2196f3;
+            color: white;
+        }
+        .view-mode {
+            display: none;
+        }
+        .view-mode .content {
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+        .edit-mode {
+            display: block;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Jira Template Buttons Extension - Test Page</h1>
+    
+    <div class="status">
+        <strong>Статус:</strong> Тестовая страница для проверки расширения. Переключайтесь между режимами просмотра и редактирования.
+    </div>
+
+    <div class="mode-switcher">
+        <button id="viewModeBtn" onclick="switchToViewMode()">👁️ Режим просмотра</button>
+        <button id="editModeBtn" class="active" onclick="switchToEditMode()">✏️ Режим редактирования</button>
+    </div>
+
+    <!-- View Mode -->
+    <div id="viewMode" class="view-mode">
+        <div class="field-group">
+            <label>Описание (режим просмотра)</label>
+            <div class="content" id="viewContent">
+                Это тестовое описание задачи в режиме просмотра. 
+                Кнопки расширения не должны появляться в этом режиме.
+                Нажмите "Режим редактирования" чтобы переключиться.
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Mode -->
+    <div id="editMode" class="edit-mode">
+        <div class="field-group">
+            <label for="description">Описание</label>
+            <textarea id="description" name="description" placeholder="Введите описание задачи...">Это тестовое описание задачи для проверки работы расширения.
+
+Здесь можно протестировать:
+1. Появление кнопок расширения
+2. Работу кнопки "Улучшить постановку" с мокированным LLM
+3. Кнопки истории (Назад/Вперед)
+4. Редактирование системного промпта
+5. Редактирование Jira шаблона
+
+Попробуйте переключиться в режим просмотра и обратно - кнопки должны появляться автоматически.</textarea>
+        </div>
+
+        <div class="field-group">
+            <label for="summary">Краткое описание (для полноты тестирования)</label>
+            <input type="text" id="summary" value="Тестовая задача для проверки расширения" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+    </div>
+
+    <div class="status">
+        <strong>Инструкции:</strong>
+        <ul>
+            <li>Убедитесь, что расширение загружено в Chrome (chrome://extensions/)</li>
+            <li>Переключайтесь между режимами и проверяйте появление кнопок</li>
+            <li>Тестируйте кнопку "Улучшить постановку" - должен возвращаться мокированный ответ</li>
+            <li>Проверьте, что изменения сразу отображаются в поле без дополнительных действий</li>
+        </ul>
+    </div>
+
+    <script>
+        function switchToViewMode() {
+            document.getElementById('viewMode').style.display = 'block';
+            document.getElementById('editMode').style.display = 'none';
+            document.getElementById('viewModeBtn').classList.add('active');
+            document.getElementById('editModeBtn').classList.remove('active');
+            
+            // Обновляем содержимое в режиме просмотра
+            const textarea = document.getElementById('description');
+            const viewContent = document.getElementById('viewContent');
+            if (textarea && viewContent) {
+                viewContent.textContent = textarea.value || 'Пустое описание';
+            }
+            
+            console.log('[TestPage] Switched to view mode');
+        }
+
+        function switchToEditMode() {
+            document.getElementById('viewMode').style.display = 'none';
+            document.getElementById('editMode').style.display = 'block';
+            document.getElementById('viewModeBtn').classList.remove('active');
+            document.getElementById('editModeBtn').classList.add('active');
+            
+            console.log('[TestPage] Switched to edit mode');
+            
+            // Имитируем изменение DOM для тестирования MutationObserver
+            setTimeout(() => {
+                const textarea = document.getElementById('description');
+                if (textarea) {
+                    textarea.focus();
+                    console.log('[TestPage] Focused textarea after mode switch');
+                }
+            }, 100);
+        }
+
+        // Логирование для отладки
+        console.log('[TestPage] Test page loaded');
+        
+        // Имитируем динамические изменения DOM как в реальной Jira
+        setInterval(() => {
+            const textarea = document.getElementById('description');
+            if (textarea && document.getElementById('editMode').style.display !== 'none') {
+                // Добавляем/удаляем класс для имитации изменений DOM
+                textarea.classList.toggle('jira-dynamic-update');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
