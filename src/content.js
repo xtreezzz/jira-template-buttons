@@ -142,17 +142,57 @@
 
     async function loadSettings() {
         return new Promise((resolve) => {
-            chrome.storage.sync.get(['apiUrl', 'model', 'systemPrompt', 'jiraTemplate'], (syncData) => {
-                chrome.storage.local.get(['apiKey'], (localData) => {
-                    resolve({
-                        apiUrl: syncData.apiUrl || '',
-                        apiKey: localData.apiKey || '',
-                        model: syncData.model || 'gpt-3.5-turbo',
-                        systemPrompt: syncData.systemPrompt || '',
-                        jiraTemplate: syncData.jiraTemplate || ''
+            // Проверяем доступность Chrome extension APIs
+            if (typeof chrome === 'undefined' || !chrome.storage) {
+                console.warn('[JiraTemplateButtons] Chrome extension APIs not available, using defaults');
+                resolve({
+                    apiUrl: '',
+                    apiKey: '',
+                    model: 'gpt-3.5-turbo',
+                    systemPrompt: '',
+                    jiraTemplate: ''
+                });
+                return;
+            }
+
+            try {
+                chrome.storage.sync.get(['apiUrl', 'model', 'systemPrompt', 'jiraTemplate'], (syncData) => {
+                    if (chrome.runtime.lastError) {
+                        console.error('[JiraTemplateButtons] Sync storage error:', chrome.runtime.lastError);
+                        resolve({
+                            apiUrl: '',
+                            apiKey: '',
+                            model: 'gpt-3.5-turbo',
+                            systemPrompt: '',
+                            jiraTemplate: ''
+                        });
+                        return;
+                    }
+
+                    chrome.storage.local.get(['apiKey'], (localData) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('[JiraTemplateButtons] Local storage error:', chrome.runtime.lastError);
+                        }
+                        
+                        resolve({
+                            apiUrl: syncData.apiUrl || '',
+                            apiKey: (localData && localData.apiKey) || '',
+                            model: syncData.model || 'gpt-3.5-turbo',
+                            systemPrompt: syncData.systemPrompt || '',
+                            jiraTemplate: syncData.jiraTemplate || ''
+                        });
                     });
                 });
-            });
+            } catch (error) {
+                console.error('[JiraTemplateButtons] LoadSettings error:', error);
+                resolve({
+                    apiUrl: '',
+                    apiKey: '',
+                    model: 'gpt-3.5-turbo',
+                    systemPrompt: '',
+                    jiraTemplate: ''
+                });
+            }
         });
     }
 
