@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Server port="8005" shutdown="SHUTDOWN">
+    <Listener className="org.apache.catalina.startup.VersionLoggerListener"/>
+    <Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on"/>
+    <Listener className="org.apache.catalina.core.JreMemoryLeakPreventionListener"/>
+    <Listener className="org.apache.catalina.mbeans.GlobalResourcesLifecycleListener"/>
+    <Listener className="org.apache.catalina.core.ThreadLocalLeakPreventionListener"/>
+
+    <GlobalNamingResources>
+        <Resource name="UserDatabase" auth="Container"
+                  type="org.apache.catalina.UserDatabase"
+                  description="User database that can be updated and saved"
+                  factory="org.apache.catalina.users.MemoryUserDatabaseFactory"
+                  pathname="conf/tomcat-users.xml"/>
+    </GlobalNamingResources>
+
+    <Service name="Catalina">
+        <Connector port="8080" protocol="HTTP/1.1"
+                   connectionTimeout="20000"
+                   redirectPort="8443"
+                   maxThreads="200"
+                   minSpareThreads="10"
+                   enableLookups="false"
+                   acceptCount="10"
+                   debug="0"
+                   URIEncoding="UTF-8"
+                   useBodyEncodingForURI="true"
+                   relaxedPathChars="[]|"
+                   relaxedQueryChars="[]|{}^&#x5c;&#x60;&quot;&lt;&gt;"/>
+
+        <Engine name="Catalina" defaultHost="localhost">
+            <Realm className="org.apache.catalina.realm.LockOutRealm">
+                <Realm className="org.apache.catalina.realm.UserDatabaseRealm"
+                       resourceName="UserDatabase"/>
+            </Realm>
+
+            <Host name="localhost" appBase="webapps"
+                  unpackWARs="true" autoDeploy="true">
+                <Context path="" docBase="${catalina.home}/atlassian-jira" reloadable="false" useHttpOnly="true">
+                    <Resource name="jdbc/JiraDS" auth="Container" type="javax.sql.DataSource"
+                              username="jira"
+                              password="jira123"
+                              driverClassName="org.postgresql.Driver"
+                              url="jdbc:postgresql://jira-db:5432/jiradb"
+                              maxTotal="100"
+                              maxIdle="20"
+                              maxWaitMillis="30000"
+                              validationQuery="select 1"
+                              testOnBorrow="false"
+                              testWhileIdle="true"
+                              timeBetweenEvictionRunsMillis="300000"
+                              minEvictableIdleTimeMillis="60000"
+                              removeAbandonedOnBorrow="true"
+                              removeAbandonedTimeout="300"/>
+                </Context>
+            </Host>
+        </Engine>
+    </Service>
+</Server>
