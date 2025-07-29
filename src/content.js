@@ -25,15 +25,16 @@
 
     let cachedDescriptionField = null;
     let lastDOMCheck = 0;
-    const DOM_CACHE_TIMEOUT = 5000; // 5 секунд
+    const DOM_CACHE_TIMEOUT = 1000; // Уменьшено до 1 секунды для лучшего обнаружения переходов
 
     function findDescriptionFieldGroup() {
         const now = Date.now();
         
-        // Проверяем кэш и что элемент все еще в DOM
+        // Проверяем кэш и что элемент все еще в DOM и видим
         if (cachedDescriptionField && 
             (now - lastDOMCheck) < DOM_CACHE_TIMEOUT &&
-            document.contains(cachedDescriptionField.textarea)) {
+            document.contains(cachedDescriptionField.textarea) &&
+            cachedDescriptionField.textarea.offsetParent !== null) {
             return cachedDescriptionField;
         }
 
@@ -41,7 +42,7 @@
         for (const group of groups) {
             const label = group.querySelector('label[for="description"]');
             const textarea = group.querySelector('textarea#description');
-            if (label && textarea) {
+            if (label && textarea && textarea.offsetParent !== null) {
                 cachedDescriptionField = { group, textarea };
                 lastDOMCheck = now;
                 return cachedDescriptionField;
@@ -92,8 +93,8 @@
             }
             // Если TinyMCE не активен — fallback на textarea
             if (textarea.offsetParent !== null) {
-                textarea.value += (textarea.value ? '\n' : '') + template;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                const newValue = textarea.value + (textarea.value ? '\n' : '') + template;
+                updateTextareaValue(textarea, newValue);
                 log('Template appended to textarea');
                 return;
             }
@@ -114,21 +115,84 @@
         setTemplate(value);
     }
 
+    function updateTextareaValue(textarea, value) {
+        // Проверяем, есть ли активный TinyMCE для этого textarea
+        const editor = isTinyMCEActive(textarea);
+        
+        if (editor) {
+            editor.setContent(value);
+            editor.fire('change');
+            log('Updated via TinyMCE');
+        } else {
+            textarea.value = value;
+            
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            textarea.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            textarea.dispatchEvent(new Event('keyup', { bubbles: true }));
+            textarea.dispatchEvent(new Event('blur', { bubbles: true }));
+            
+            textarea.focus();
+            
+            log('Updated via textarea with multiple events');
+        }
+    }
+
     // --- LLM & History logic ---
 
     async function loadSettings() {
         return new Promise((resolve) => {
-            chrome.storage.sync.get(['apiUrl', 'model', 'systemPrompt', 'jiraTemplate'], (syncData) => {
-                chrome.storage.local.get(['apiKey'], (localData) => {
-                    resolve({
-                        apiUrl: syncData.apiUrl || '',
-                        apiKey: localData.apiKey || '',
-                        model: syncData.model || 'gpt-3.5-turbo',
-                        systemPrompt: syncData.systemPrompt || '',
-                        jiraTemplate: syncData.jiraTemplate || ''
+            // Проверяем доступность Chrome extension APIs
+            if (typeof chrome === 'undefined' || !chrome.storage) {
+                console.warn('[JiraTemplateButtons] Chrome extension APIs not available, using defaults');
+                resolve({
+                    apiUrl: '',
+                    apiKey: '',
+                    model: 'gpt-3.5-turbo',
+                    systemPrompt: '',
+                    jiraTemplate: ''
+                });
+                return;
+            }
+
+            try {
+                chrome.storage.sync.get(['apiUrl', 'model', 'systemPrompt', 'jiraTemplate'], (syncData) => {
+                    if (chrome.runtime.lastError) {
+                        console.error('[JiraTemplateButtons] Sync storage error:', chrome.runtime.lastError);
+                        resolve({
+                            apiUrl: '',
+                            apiKey: '',
+                            model: 'gpt-3.5-turbo',
+                            systemPrompt: '',
+                            jiraTemplate: ''
+                        });
+                        return;
+                    }
+
+                    chrome.storage.local.get(['apiKey'], (localData) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('[JiraTemplateButtons] Local storage error:', chrome.runtime.lastError);
+                        }
+                        
+                        resolve({
+                            apiUrl: syncData.apiUrl || '',
+                            apiKey: (localData && localData.apiKey) || '',
+                            model: syncData.model || 'gpt-3.5-turbo',
+                            systemPrompt: syncData.systemPrompt || '',
+                            jiraTemplate: syncData.jiraTemplate || ''
+                        });
                     });
                 });
-            });
+            } catch (error) {
+                console.error('[JiraTemplateButtons] LoadSettings error:', error);
+                resolve({
+                    apiUrl: '',
+                    apiKey: '',
+                    model: 'gpt-3.5-turbo',
+                    systemPrompt: '',
+                    jiraTemplate: ''
+                });
+            }
         });
     }
 
@@ -164,6 +228,39 @@
         document.body.appendChild(modal);
     }
 
+    function showTemplateModal(currentTemplate, onSave) {
+        // Простое модальное окно для редактирования шаблона Jira
+        const modal = document.createElement('div');
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0,0,0,0.3)';
+        modal.style.zIndex = '9999';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+
+        const box = document.createElement('div');
+        box.style.background = '#fff';
+        box.style.padding = '24px';
+        box.style.borderRadius = '8px';
+        box.style.minWidth = '400px';
+        box.style.maxWidth = '600px';
+        box.innerHTML = `<h3>Шаблон Jira</h3><textarea style="width:100%;height:150px;" placeholder="Введите шаблон для few-shot prompting...">${currentTemplate || ''}</textarea><br><button>Сохранить</button> <button type="button">Отмена</button>`;
+        const textarea = box.querySelector('textarea');
+        const saveBtn = box.querySelector('button');
+        const cancelBtn = box.querySelectorAll('button')[1];
+        saveBtn.onclick = () => {
+            onSave(textarea.value);
+            document.body.removeChild(modal);
+        };
+        cancelBtn.onclick = () => document.body.removeChild(modal);
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+    }
+
     async function callLLM(prompt, text, textarea) {
         // Показать спиннер
         let spinner = document.createElement('span');
@@ -173,6 +270,35 @@
         textarea.parentNode.insertBefore(spinner, textarea);
         
         return new Promise((resolve) => {
+            // Проверяем, если это тестовая среда (по URL или специальному флагу)
+            const isTestMode = window.location.href.includes('test-jira-page.html') || 
+                              window.location.protocol === 'file:' ||
+                              localStorage.getItem('jira-extension-test-mode') === 'true';
+            
+            if (isTestMode) {
+                setTimeout(() => {
+                    if (spinner && spinner.parentNode) {
+                        spinner.remove();
+                    }
+                    
+                    const mockResponses = [
+                        "✨ Улучшенная версия текста:\n\nВаш текст был обработан и улучшен с помощью мокированного LLM. Это демонстрирует, что функция обновления textarea работает корректно и изменения сразу отображаются в форме.",
+                        "🚀 Оптимизированный текст:\n\nТекст переработан для лучшей читаемости и структуры. Добавлены ключевые моменты и улучшена формулировка задачи.",
+                        "📝 Переформулированное описание:\n\nОписание задачи структурировано и дополнено важными деталями. Улучшена ясность постановки задачи.",
+                        "🎯 Уточненная постановка:\n\nЗадача переформулирована с акцентом на конкретные результаты и критерии приемки. Добавлена структура и логическая последовательность."
+                    ];
+                    
+                    const randomResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
+                    
+                    console.log('[JiraTemplateButtons] Mock LLM response generated');
+                    resolve({
+                        output: randomResponse,
+                        mock: true
+                    });
+                }, 1500); // Имитируем задержку API
+                return;
+            }
+            
             try {
                 chrome.runtime.sendMessage({ type: 'llm', prompt, text }, (response) => {
                     if (spinner && spinner.parentNode) {
@@ -295,6 +421,12 @@
                 chrome.storage.sync.set({ systemPrompt: newPrompt });
             });
         });
+        const templateBtn = createButton('📝 Уточнить шаблон', async () => {
+            const settings = await loadSettings();
+            showTemplateModal(settings.jiraTemplate, (newTemplate) => {
+                chrome.storage.sync.set({ jiraTemplate: newTemplate });
+            });
+        });
         const improveBtn = createButton('⚙️ Улучшить постановку', async () => {
             try {
                 const settings = await loadSettings();
@@ -308,8 +440,7 @@
                 
                 const result = await callLLM(prompt, text, textarea);
                 if (result && result.output) {
-                    textarea.value = result.output;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateTextareaValue(textarea, result.output);
                     await saveVersion(result.output);
                 }
             } catch (error) {
@@ -320,8 +451,7 @@
         const backBtn = createButton('⬅️ Назад', async () => {
             try {
                 await goBack((ver) => {
-                    textarea.value = ver;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateTextareaValue(textarea, ver);
                 });
             } catch (error) {
                 console.error('[JiraTemplateButtons] History back error:', error);
@@ -330,15 +460,14 @@
         const forwardBtn = createButton('➡️ Вперед', async () => {
             try {
                 await goForward((ver) => {
-                    textarea.value = ver;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateTextareaValue(textarea, ver);
                 });
             } catch (error) {
                 console.error('[JiraTemplateButtons] History forward error:', error);
             }
         });
 
-        panel.append(promptBtn, improveBtn, backBtn, forwardBtn);
+        panel.append(promptBtn, templateBtn, improveBtn, backBtn, forwardBtn);
         textarea.parentNode.insertBefore(panel, textarea);
     }
 
@@ -359,7 +488,10 @@
     let initTimeout;
     const debouncedInit = () => {
         clearTimeout(initTimeout);
-        initTimeout = setTimeout(init, 300);
+        initTimeout = setTimeout(() => {
+            cachedDescriptionField = null;
+            init();
+        }, 300);
     };
     
     const observer = new MutationObserver(debouncedInit);
